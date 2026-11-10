@@ -1,0 +1,26 @@
+services:
+  - type: worker
+    name: britech-md
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    autoDeploy: false
+    disk:
+      name: britech-session
+      mountPath: /app/session
+      sizeGB: 1
+    envVars:
+      - key: BOT_NAME
+        value: BRITECH MD
+      - key: OWNER_NAME
+        value: BRIAN NDICHI
+      - key: OWNER_NUMBER
+        value: 254717276195
+      - key: OWNER_EMAIL
+        value: brianndichi340@gmail.com
+      - key: PREFIX
+        value: .
+      - key: SESSION_DIR
+        value: /app/session/auth
+      - key: TIMEZONE
+        value: Africa/Nairobi
