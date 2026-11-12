@@ -6,6 +6,7 @@ const pino = require('pino');
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
+const zlib = require('zlib');
 
 const sessionDir = path.resolve(process.env.SESSION_DIR || './session/auth');
 const sessionIdPath = path.resolve(process.env.SESSION_ID_FILE || './SESSION_ID.txt');
@@ -126,7 +127,10 @@ function publishPairingCode(code) {
     if (!state.creds.registered) throw new Error('WhatsApp connection opened but registration was not saved. Please run pairing again.');
     fs.writeFileSync(path.join(path.dirname(sessionDir), 'SESSION_INFO.txt'),
       'BRITECH MD session created: ' + new Date().toISOString() + '\nAuth folder: ' + sessionDir + '\nKeep the entire auth folder private. Never commit or share it.\n');
-    fs.writeFileSync(sessionIdPath, Buffer.from(fs.readFileSync(path.join(sessionDir, 'creds.json'))).toString('base64'));
+    // Compressed + prefixed SESSION_ID (shorter, easy to paste on hosts)
+    const credsRaw = fs.readFileSync(path.join(sessionDir, 'creds.json'));
+    const compressed = zlib.deflateSync(credsRaw);
+    fs.writeFileSync(sessionIdPath, 'BRITECH:\~' + compressed.toString('base64'));
     console.log('WhatsApp linked successfully. Authentication files saved.');
     console.log('The workflow will now package and encrypt the complete auth folder for SESSION_ID export.');
   } finally {
