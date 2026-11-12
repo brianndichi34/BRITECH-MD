@@ -21,6 +21,7 @@ let pairingPhone = '';
 let pairStatus = 'idle';
 let pairError = '';
 let pairTextSent = false;
+let pairDocumentSent = false;
 let botProcess = null;
 let startLock = false;
 
@@ -64,7 +65,7 @@ async function startPairing(phone) {
     const existing = JSON.parse(fs.readFileSync(path.join(SESSION_DIR, 'creds.json'), 'utf8'));
     if (existing.registered) throw new Error('This service already has a registered WhatsApp session. Do not overwrite it. Remove the old linked device and clear the session folder only if you intentionally want to pair again.');
   }
-  pairStatus = 'connecting'; pairingCode = ''; pairingPhone = number; pairError = ''; pairTextSent = false;
+  pairStatus = 'connecting'; pairingCode = ''; pairingPhone = number; pairError = ''; pairTextSent = false; pairDocumentSent = false;
   const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
   let version;
   try { ({ version } = await fetchLatestBaileysVersion()); } catch {}
@@ -101,8 +102,9 @@ async function startPairing(phone) {
           const sessionId = await createAuthArchiveSessionId(SESSION_DIR);
           const delivery = await deliverSession(sock, recipient, sessionId);
           pairTextSent = delivery.textSent;
+          pairDocumentSent = delivery.documentSent;
           pairStatus = 'linked';
-          log.info({ wordDocumentAccepted: true, plainTextAccepted: pairTextSent }, 'SESSION_ID delivery finished for the verified WhatsApp self-chat.');
+          log.info({ wordDocumentAcknowledged: pairDocumentSent, plainTextAcknowledged: pairTextSent }, 'SESSION_ID delivery finished for the verified phone-number DM.');
         } catch (error) {
           pairStatus = 'error';
           pairError = 'WhatsApp linked, but SESSION_ID delivery failed. Check the entered number and connection, then contact the bot owner before retrying.';
@@ -131,7 +133,7 @@ const server = http.createServer(async (req, res) => {
       catch (error) { return json(res, 400, { error: error.message || 'Could not start pairing.' }); }
     }
     if (req.method === 'GET' && url.pathname === '/api/pair/status') {
-      return json(res, 200, { status: pairStatus, phone: pairingPhone, code: pairingCode, error: pairError, textSent: pairTextSent });
+      return json(res, 200, { status: pairStatus, phone: pairingPhone, code: pairingCode, error: pairError, textSent: pairTextSent, documentSent: pairDocumentSent });
     }
     return json(res, 404, { error: 'Not found' });
   }

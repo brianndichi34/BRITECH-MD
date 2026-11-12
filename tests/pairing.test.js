@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const zlib = require('node:zlib');
+const { EventEmitter } = require('node:events');
 const JSZip = require('jszip');
 
 const root = path.join(__dirname, '..');
@@ -27,11 +28,13 @@ test('session sender verifies the target number through the full paired identity
   assert.match(sender, /getVerifiedRecipient\(phone, state\.creds\.me\)/);
   assert.doesNotMatch(sender, /phone \+ '@s\.whatsapp\.net'/);
   assert.match(server, /getVerifiedRecipient\(number, state\.creds\.me\)/);
+  assert.match(server, /wordDocumentAcknowledged: pairDocumentSent/);
+  assert.match(server, /documentSent: pairDocumentSent/);
 });
 
 test('README documents secret handling and copyable SESSION_ID delivery', () => {
   const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
-  assert.match(readme, /separate plain-text WhatsApp message/);
+  assert.match(readme, /separate plain-text message/);
   assert.match(readme, /Word document/i);
   assert.match(readme, /long-press that message to copy it/i);
   assert.match(readme, /Keep the pairing code and run access private/);
@@ -56,8 +59,8 @@ test('JID resolver normalizes phone, legacy c.us, hosted and mapped LID identiti
   assert.equal(pairingSession.getVerifiedRecipient('254712345678', { id: '254712345678:4@s.whatsapp.net' }), '254712345678@s.whatsapp.net');
   assert.equal(pairingSession.getVerifiedRecipient('254712345678', { id: '254712345678@c.us' }), '254712345678@s.whatsapp.net');
   assert.equal(pairingSession.getVerifiedRecipient('254712345678', { id: '254712345678@hosted' }), '254712345678@hosted');
-  assert.equal(pairingSession.getVerifiedRecipient('254712345678', { id: '123456789012345:2@lid', jid: '254712345678@s.whatsapp.net' }), '123456789012345@lid');
-  assert.equal(pairingSession.getVerifiedRecipient('254712345678', { id: '123456789012345@hosted.lid', jid: '254712345678@hosted' }), '123456789012345@hosted.lid');
+  assert.equal(pairingSession.getVerifiedRecipient('254712345678', { id: '123456789012345:2@lid', jid: '254712345678@s.whatsapp.net' }), '254712345678@s.whatsapp.net');
+  assert.equal(pairingSession.getVerifiedRecipient('254712345678', { id: '123456789012345@hosted.lid', jid: '254712345678@hosted' }), '254712345678@hosted');
 });
 
 test('JID resolver rejects group, broadcast, newsletter and status addresses', () => {
@@ -145,27 +148,48 @@ test('Word document contains the complete SESSION_ID and delivery sends it befor
   assert.match(documentXml, /BRITECH2:abc\+\/=XYZ/);
 
   const sent = [];
-  const fakeSocket = { async sendMessage(jid, payload) { sent.push({ jid, payload }); return { key: { id: `message-${sent.length}` } }; } };
+  const ev = new EventEmitter();
+  const fakeSocket = { ev, async sendMessage(jid, payload) {
+    sent.push({ jid, payload });
+    const id = `message-${sent.length}`;
+    queueMicrotask(() => ev.emit('messages.update', [{ key: { id }, update: { status: 2 } }]));
+    return { key: { id } };
+  } };
   const result = await pairingSession.deliverSession(fakeSocket, '254712345678@s.whatsapp.net', sessionId);
   assert.equal(sent[0].payload.fileName, 'BRITECH-MD-SESSION_ID.docx');
   assert.equal(sent[0].payload.mimetype, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
   assert.equal(sent[1].payload.text.includes('SESSION_ID'), true);
   assert.equal(sent[2].payload.text, sessionId);
+  assert.equal(sent.every(item => item.jid === '254712345678@s.whatsapp.net'), true);
+  assert.equal(result.documentSent, true);
   assert.equal(result.textSent, true);
 });
 
-test('text delivery failure still leaves an acknowledged Word document', async () => {
+test('text delivery failure is reported, and local message creation is not treated as server acknowledgement', async () => {
   const sent = [];
-  const fakeSocket = { async sendMessage(_jid, payload) {
+  const ev = new EventEmitter();
+  const fakeSocket = { ev, async sendMessage(_jid, payload) {
     sent.push(payload);
+    const id = `message-${sent.length}`;
+    if (sent.length !== 3) queueMicrotask(() => ev.emit('messages.update', [{ key: { id }, update: { status: 2 } }]));
     if (sent.length === 3) throw new Error('message too long');
-    return { key: { id: `message-${sent.length}` } };
+    return { key: { id } };
   } };
   const result = await pairingSession.deliverSession(fakeSocket, '254712345678@s.whatsapp.net', 'BRITECH2:large-payload');
   assert.equal(sent[0].fileName, 'BRITECH-MD-SESSION_ID.docx');
   assert.equal(result.documentId, 'message-1');
   assert.equal(result.textSent, false);
   assert.match(result.textError, /message too long/);
+  const unacked = await pairingSession.sendAndConfirm({ ev: new EventEmitter(), async sendMessage() { return { key: { id: 'local-only' } }; } }, '254712345678@s.whatsapp.net', { text: 'not acked' }, 5);
+  assert.deepEqual(unacked, { id: 'local-only', acknowledged: false });
+});
+
+test('long SESSION_ID text is sent in pasteable ordered chunks under WhatsApp message size limits', () => {
+  const id = 'BRITECH3:' + 'x'.repeat(25001);
+  const [notice, ...parts] = pairingSession.createDeliveryMessages(id);
+  assert.match(notice, /join them with no spaces or line breaks/);
+  assert.equal(parts.join(''), id);
+  assert.ok(parts.every(part => part.length <= 12000));
 });
 
 test('GitHub Actions makes a compact archive ID and does not hide delivery outcomes', () => {
@@ -174,7 +198,9 @@ test('GitHub Actions makes a compact archive ID and does not hide delivery outco
   assert.doesNotMatch(workflow, /continue-on-error: true/);
   assert.match(sender, /deliverSession\(sock, recipient, sessionId\)/);
   assert.match(server, /deliverSession\(sock, recipient, sessionId\)/);
-  assert.match(dashboard, /Word document sent/);
+  assert.match(sender, /word document did not receive a WhatsApp server acknowledgement/i);
+  assert.match(dashboard, /d\.documentSent/);
+  assert.match(dashboard, /WhatsApp acknowledged/);
 });
 
 test('KataBump guidance explains downloading, extracting, creating, editing, and saving a private .env', () => {
