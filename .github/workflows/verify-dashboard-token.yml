@@ -1,0 +1,20 @@
+name: Verify pairing dashboard token
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-token:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check secret availability without revealing it
+        env:
+          DASHBOARD_TOKEN: ${{ secrets.PAIRING_DASHBOARD_TOKEN }}
+        run: |
+          set -eu
+          if [ -z "${DASHBOARD_TOKEN:-}" ]; then
+            echo "::error::PAIRING_DASHBOARD_TOKEN is unavailable to this workflow."
+            exit 1
+          fi
+          unset DASHBOARD_TOKEN
+          echo "PAIRING_DASHBOARD_TOKEN is available to GitHub Actions; its value was not displayed."
