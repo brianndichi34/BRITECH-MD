@@ -3,39 +3,21 @@ const { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = r
 const pino = require('pino');
 const fs = require('fs');
 const path = require('path');
-const zlib = require('zlib');
 const config = require('./lib/config');
 const { handleMessage } = require('./lib/handler');
+const { hydrateSessionId } = require('./lib/session-id');
 
 let stopping = false;
 let reconnectTimer;
 const logger = pino({ level: config.logLevel });
 
-/** Expand SESSION_ID env into sessionDir/creds.json when the auth folder is empty. */
-function hydrateSessionFromEnv() {
-  const sessionId = String(process.env.SESSION_ID || '').trim();
-  if (!sessionId) return;
-  const dir = path.resolve(config.sessionDir);
-  fs.mkdirSync(dir, { recursive: true });
-  const credsPath = path.join(dir, 'creds.json');
-  if (fs.existsSync(credsPath)) return; // do not overwrite a live session
-
+/** Import SESSION_ID only when no existing auth session is present. */
+async function hydrateSessionFromEnv() {
   try {
-    let payload = sessionId;
-    if (payload.startsWith('BRITECH:\~')) payload = payload.slice('BRITECH:\~'.length);
-    let raw;
-    try {
-      raw = zlib.inflateSync(Buffer.from(payload, 'base64'));
-    } catch {
-      // Legacy: uncompressed base64 of creds.json
-      raw = Buffer.from(payload, 'base64');
-    }
-    const text = raw.toString('utf8');
-    JSON.parse(text); // validate
-    fs.writeFileSync(credsPath, text);
-    logger.info('Loaded SESSION_ID into auth folder.');
+    const result = await hydrateSessionId(process.env.SESSION_ID, config.sessionDir);
+    if (result.loaded) logger.info({ files: result.files, format: result.format }, 'Loaded SESSION_ID into auth folder.');
   } catch (error) {
-    logger.error({ err: error.message }, 'Failed to hydrate SESSION_ID; fix or remove SESSION_ID.');
+    logger.error({ err: error.message }, 'Failed to hydrate SESSION_ID; fix it or remove it.');
     throw error;
   }
 }
@@ -43,7 +25,7 @@ function hydrateSessionFromEnv() {
 async function startBot() {
   if (stopping) return;
   fs.mkdirSync(path.resolve(config.sessionDir), { recursive: true });
-  hydrateSessionFromEnv();
+  await hydrateSessionFromEnv();
   const { state, saveCreds } = await useMultiFileAuthState(path.resolve(config.sessionDir));
   let version;
   try { ({ version } = await fetchLatestBaileysVersion()); }

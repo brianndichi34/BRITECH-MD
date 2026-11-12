@@ -5,7 +5,7 @@ const { useMultiFileAuthState, Browsers } = baileys;
 const pino = require('pino');
 const fs = require('fs');
 const path = require('path');
-const { getVerifiedRecipient, createDeliveryMessages } = require('./lib/pairing-session');
+const { getVerifiedRecipient, deliverSession } = require('./lib/pairing-session');
 
 (async () => {
   const phone = String(process.env.PHONE_NUMBER || '').replace(/\D/g, '');
@@ -42,13 +42,10 @@ const { getVerifiedRecipient, createDeliveryMessages } = require('./lib/pairing-
     });
 
     const recipient = getVerifiedRecipient(phone, state.creds.me);
-    const [notice, sessionText] = createDeliveryMessages(sessionId);
-    const noticeResult = await sock.sendMessage(recipient, { text: notice });
-    if (!noticeResult?.key?.id) throw new Error('WhatsApp did not acknowledge the SESSION_ID instruction message.');
-    // Keep the sensitive session value in its own plain-text DM for easy copying.
-    const sessionResult = await sock.sendMessage(recipient, { text: sessionText });
-    if (!sessionResult?.key?.id) throw new Error('WhatsApp did not acknowledge the SESSION_ID message.');
-    console.log('WhatsApp accepted both messages in the verified account self-chat. SESSION_ID was sent separately as copyable text; its value is not printed in Actions logs.');
+    const delivery = await deliverSession(sock, recipient, sessionId);
+    console.log('WhatsApp accepted the SESSION_ID Word document in the verified account self-chat.');
+    if (delivery.textSent) console.log('The separate plain-text SESSION_ID was also accepted. Its value is not printed in Actions logs.');
+    else console.warn('The Word document was accepted, but the separate plain-text SESSION_ID was not accepted. Open the attached document to copy it.');
   } finally {
     try { await sock.end(undefined); } catch {}
   }
