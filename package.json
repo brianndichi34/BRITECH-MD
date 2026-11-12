@@ -10,17 +10,19 @@
     "session": "node generate-session.js",
     "session:ci": "node generate-session.js --ci",
     "session:send": "node send-session.js",
-    "check": "node --check index.js && node --check pairing-server.js && node --check generate-session.js && node --check send-session.js && node --check lib/handler.js && node --check lib/config.js && node --check lib/pairing-session.js && node --check lib/session-id.js",
+    "check": "node --check index.js && node --check pairing-server.js && node --check generate-session.js && node --check send-session.js && node --check lib/handler.js && node --check lib/config.js && node --check lib/pairing-session.js && node --check lib/session-id.js && node --check lib/plugin-loader.js && node --check plugins/media.js && node --check plugins/interactive.js && node --check plugins/group-tools.js && node --check plugins/presence.js",
     "test": "npm run check && node --test tests/*.test.js"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.9.0"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "6.7.24",
     "dotenv": "^16.4.7",
     "jszip": "^3.10.2",
-    "mathjs": "^14.2.1",
-    "pino": "^9.6.0"
+    "mathjs": "^15.2.0",
+    "pino": "^9.6.0",
+    "qrcode": "^1.5.4",
+    "sharp": "^0.35.5"
   }
 }

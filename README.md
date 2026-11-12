@@ -2,7 +2,7 @@
 
 <p align="center">
   <strong>BRIAN NDICHI · Node.js · Baileys</strong><br>
-  A WhatsApp assistant with commands, group tools, utilities and optional AI.
+  A WhatsApp assistant with modular commands, media tools, group tools, utilities and optional AI.
 </p>
 
 <p align="center">
@@ -29,7 +29,9 @@ The pairing page is designed to make phone-number pairing easy on mobile: enter 
 
 After dashboard pairing is confirmed, the dashboard sends the `SESSION_ID` to the WhatsApp DM for the entered phone number as a Word document and separately as plain text. It verifies that number against the connected account’s phone JID or verified PN alias, including accounts whose primary identity is a LID. It rejects groups, broadcasts, and identities that cannot be tied to the entered number. The GitHub Actions workflow uses the same phone-number routing. Delivery is reported only when Baileys emits a WhatsApp server acknowledgement for the corresponding message; a locally-created message ID is not treated as proof. Very long plain-text IDs are split into ordered chunks that must be joined with no spaces or line breaks. The Word document contains the complete ID and is attempted as a separate route. New `BRITECH3:` IDs use Brotli compression over the auth files directly; older `BRITECH2:` IDs remain supported. Open the Word file to copy the complete value. Treat it as a password; do not post it in issues, logs, screenshots, or chat. Configure the dashboard with `PAIRING_DASHBOARD_TOKEN` and `SESSION_DIR` before exposing it.
 
-The automated test suite checks the pairing display/copy controls, BRITECH session-ID encoding, number-match guard, phone-number DM routing, Word/text generation, chunking, and acknowledgement handling. It does not perform a real WhatsApp login or prove inbox delivery; WhatsApp server acknowledgement means the server accepted the message, not that a phone displayed it. Verify inbox receipt on a user-controlled live deployment.
+The command system also loads local modules from `plugins/`. These are independently implemented BRITECH features, not Keith-hosted API calls: image stickers, sticker-to-PNG conversion, QR images, native WhatsApp polls and reactions, AFK notices, group name/description updates, mute/unmute, and invite-link renewal. They need no extra API keys; sticker/PNG and QR processing runs locally. Video-to-sticker conversion and downloader commands that rely on third-party APIs are intentionally omitted. Existing commands remain available.
+
+The automated test suite checks the pairing display/copy controls, BRITECH session-ID encoding, number-match guard, phone-number DM routing, Word/text generation, chunking, acknowledgement handling, plugin loading, and local media/poll/group behavior. It does not perform a real WhatsApp login or prove inbox delivery; WhatsApp server acknowledgement means the server accepted the message, not that a phone displayed it. Verify inbox receipt on a user-controlled live deployment.
 
 ## Generate a WhatsApp session ID
 
@@ -69,7 +71,7 @@ Enter the international WhatsApp number when prompted, then follow the pairing i
 
 1. Download a fresh project ZIP from [GitHub Code → Download ZIP](https://github.com/brianndichi34/BRITECH-MD/archive/refs/heads/main.zip). Sign in at KataBump and create a Node.js server.
 2. In KataBump, open **Files** and upload the project ZIP. Use the file manager’s **Extract/Unarchive** action. Make sure the extracted project contents (not an extra nested project folder) are in `/home/container`, with `package.json`, `index.js`, and `.env.example` together. If extraction creates a nested `BRITECH-MD-main` folder, move its contents into `/home/container` so the bot and `.env` use one project root.
-3. In the KataBump **Startup** tab, select Node.js 20 or newer and set **JS FILE** to `index.js`. The app starts with `npm start`; do not put the SESSION_ID into the JS FILE or ADDITIONAL PACKAGES boxes.
+3. In the KataBump **Startup** tab, select Node.js 20.9 or newer and set **JS FILE** to `index.js`. The app starts with `npm start`; dependencies are declared in `package.json` and pinned by `package-lock.json`. Do not put the SESSION_ID into the JS FILE or ADDITIONAL PACKAGES boxes.
 4. In **Files**, select **New File** (or the equivalent file-creation action), type `.env` exactly, and create it in `/home/container` beside `package.json`. Open `.env.example`, copy its content, then open `.env` and paste the template. On the blank `SESSION_ID=` line, paste your complete new `BRITECH3:` value immediately after `=`. Keep it all on one line with no quotes or spaces around `=`.
 5. Press **Save** in the file editor (or confirm the save prompt). Reopen `.env` to verify the line begins `SESSION_ID=BRITECH3:` and the full value is still present. Do not paste it into `package.json`, the source code, a public GitHub file, or chat. `.env` is intentionally excluded from Git, so each deployer creates this private file after extracting the ZIP.
 6. Ensure `/home/container/session/auth` is persistent. If that folder already contains credentials, back it up and clear it before first startup with `SESSION_ID`; the bot will not overwrite an existing auth session when importing the ID.
@@ -79,7 +81,7 @@ KataBump's web upload process requires a ZIP containing `package.json` and the e
 
 ## Requirements
 
-- Node.js 20+
+- Node.js 20.9+
 - WhatsApp account with linked-device access
 - Persistent storage for authentication files
 
@@ -108,8 +110,9 @@ KataBump's web upload process requires a ZIP containing `package.json` and the e
 - General: `.menu`, `.help`, `.ping`, `.alive`, `.owner`, `.info`, `.repo`
 - Utilities: `.time`, `.date`, `.calc 25*(4+2)`, `.quote`, `.echo text`, `.ai question`
 - Groups: `.groupinfo`, `.admins`, `.tagall`, `.hidetag`, `.link`, `.close`, `.open`, `.kick`, `.promote`, `.demote`
+- Plugins: `.sticker` (reply to or caption an image), `.toimg` (reply to a sticker), `.qr text`, `.poll Question | Option 1 | Option 2`, `.react 👍` (reply to a message), `.afk reason`, `.back`, `.setname`, `.setdesc`, `.mute`, `.unmute`, `.revoke`
 
-Group moderation commands require the bot to be an administrator. Use only in groups where you have permission.
+Group management commands require a group administrator or the configured bot owner, and the bot itself must be a group admin for WhatsApp group updates. Use moderation actions only in groups where you have permission. AFK state is held in memory and resets when the process restarts. Image conversion accepts images up to 8 MB and static stickers; animated/video conversion is not enabled because it needs additional system tooling.
 
 ## Tests
 
