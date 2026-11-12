@@ -1,6 +1,7 @@
 require('dotenv').config();
-const makeWASocket = require('@whiskeysockets/baileys').default;
-const { useMultiFileAuthState, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
+const baileys = require('@whiskeysockets/baileys');
+const makeWASocket = baileys.default;
+const { useMultiFileAuthState, fetchLatestBaileysVersion, DisconnectReason, Browsers } = baileys;
 const pino = require('pino');
 const fs = require('fs');
 const path = require('path');
@@ -10,6 +11,7 @@ const sessionDir = path.resolve(process.env.SESSION_DIR || './session/auth');
 const ciMode = process.argv.includes('--ci') || process.env.CI === 'true';
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 const ask = q => new Promise(resolve => rl.question(q, resolve));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 (async () => {
   console.log('\nBRITECH MD — WhatsApp session pairing');
@@ -31,35 +33,58 @@ const ask = q => new Promise(resolve => rl.question(q, resolve));
   const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
   let version;
   try { ({ version } = await fetchLatestBaileysVersion()); } catch {}
-  const sock = makeWASocket({
-    ...(version ? { version } : {}),
-    auth: state,
-    logger: pino({ level: 'silent' }),
-    printQRInTerminal: false,
-    browser: ['BRITECH MD', 'Chrome', '1.0.0']
-  });
-  sock.ev.on('creds.update', saveCreds);
 
-  try {
-    const code = await sock.requestPairingCode(phone);
-    console.log('\nPAIRING CODE: ' + code + '\n');
-    console.log('Enter it on your phone under WhatsApp > Linked devices > Link with phone number instead.');
-    console.log('Keep this process running until the connection is confirmed.');
-    await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Pairing timed out after 3 minutes. Run the session workflow again.')), 180000);
-      sock.ev.on('connection.update', update => {
-        if (update.connection === 'open') { clearTimeout(timeout); resolve(); }
-        if (update.connection === 'close' && update.lastDisconnect?.error) {
-          clearTimeout(timeout);
-          reject(update.lastDisconnect.error);
-        }
-      });
+  let pairingRequested = false;
+
+  // Opens a socket. Requests the pairing code only once the websocket is really
+  // connected (the "qr" event), and reconnects when WhatsApp asks for a restart
+  // right after linking (status 515), which is normal.
+  const connect = () => new Promise((resolve, reject) => {
+    const sock = makeWASocket({
+      ...(version ? { version } : {}),
+      auth: state,
+      logger: pino({ level: 'silent' }),
+      printQRInTerminal: false,
+      browser: Browsers.ubuntu('Chrome')
     });
+    sock.ev.on('creds.update', saveCreds);
+    sock.ev.on('connection.update', async update => {
+      const { connection, lastDisconnect, qr } = update;
+      if (qr && !state.creds.registered && !pairingRequested) {
+        pairingRequested = true;
+        try {
+          const code = await sock.requestPairingCode(phone);
+          console.log('\nPAIRING CODE: ' + code + '\n');
+          console.log('Enter it on your phone under WhatsApp > Linked devices > Link with phone number instead.');
+          console.log('Keep this process running until the connection is confirmed.');
+        } catch (e) { reject(e); }
+      }
+      if (connection === 'open') resolve(sock);
+      if (connection === 'close') {
+        const status = lastDisconnect?.error?.output?.statusCode;
+        if (status === DisconnectReason.restartRequired) {
+          connect().then(resolve, reject);
+        } else if (state.creds.registered && status !== DisconnectReason.loggedOut) {
+          connect().then(resolve, reject);
+        } else {
+          reject(lastDisconnect?.error || new Error('Connection closed'));
+        }
+      }
+    });
+  });
+
+  let sock;
+  try {
+    sock = await Promise.race([
+      connect(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Pairing timed out after 3 minutes. Run the session workflow again.')), 180000))
+    ]);
+    await sleep(5000); // let credentials finish saving
     fs.writeFileSync(path.join(path.dirname(sessionDir), 'SESSION_INFO.txt'),
       'BRITECH MD session created: ' + new Date().toISOString() + '\nAuth folder: ' + sessionDir + '\nKeep the entire auth folder private. Never commit or share it.\n');
     console.log('\nWhatsApp linked successfully. Session files saved.');
   } finally {
-    try { await sock.end(undefined); } catch {}
+    try { await sock?.end(undefined); } catch {}
     rl.close();
   }
 })().catch(error => {
