@@ -28,32 +28,33 @@ jobs:
       - run: npm install --ignore-scripts
       - name: Start with a clean session workspace
         run: rm -rf session session-auth.zip session-auth.zip.enc SESSION_ID.txt SESSION_ID.txt.enc
-      - name: Request pairing code and wait for WhatsApp link
+      - name: Generate pairing code and wait for WhatsApp link
         env:
           PHONE_NUMBER: ${{ inputs.phone_number }}
           SESSION_DIR: ./session/auth
+          SESSION_ID_FILE: ./SESSION_ID.txt
           CI: "true"
         run: npm run session:ci
-      - name: Create SESSION_ID and encrypted backup
+      - name: Verify session credentials and create SESSION_ID
         env:
           SESSION_ARCHIVE_PASSWORD: ${{ secrets.SESSION_ARCHIVE_PASSWORD }}
         run: |
           set -euo pipefail
-          if [ ! -d session/auth ] || [ -z "$(ls -A session/auth)" ]; then
-            echo "::error::No authentication files were created after pairing."
-            exit 1
-          fi
+          test -s session/auth/creds.json || { echo "::error::creds.json missing"; exit 1; }
+          node -e "const c=require('./session/auth/creds.json'); if(!c.registered || !c.me?.id) process.exit(1)"
           zip -qr session-auth.zip session
           base64 -w 0 session-auth.zip > SESSION_ID.txt
+          test -s SESSION_ID.txt
           openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -in SESSION_ID.txt -out SESSION_ID.txt.enc -pass env:SESSION_ARCHIVE_PASSWORD
           openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -in session-auth.zip -out session-auth.zip.enc -pass env:SESSION_ARCHIVE_PASSWORD
           {
             echo "## BRITECH MD session generated"
             echo ""
+            echo "- WhatsApp registration was verified from the saved credentials."
             echo "- Encrypted SESSION_ID and auth-folder backup are uploaded as short-lived artifacts."
-            echo "- The workflow will also attempt to send the SESSION_ID directly to the WhatsApp account that was paired."
-            echo "- The plain SESSION_ID is never printed in Actions logs or committed to Git."
-            echo "- Treat the WhatsApp DM as a password: anyone who obtains it may access your linked session."
+            echo "- The SESSION_ID is sent as a text-file attachment to the linked WhatsApp self-chat."
+            echo "- No session ID or pairing code is printed in Actions logs."
+            echo "- Treat the SESSION_ID file as a password."
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Upload encrypted SESSION_ID
         uses: actions/upload-artifact@v4
@@ -69,7 +70,7 @@ jobs:
           path: session-auth.zip.enc
           retention-days: 1
           if-no-files-found: error
-      - name: Send SESSION_ID to the linked WhatsApp account by DM
+      - name: Send SESSION_ID file to linked WhatsApp self-chat
         continue-on-error: true
         env:
           PHONE_NUMBER: ${{ inputs.phone_number }}
