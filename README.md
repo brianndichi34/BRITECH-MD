@@ -68,14 +68,14 @@ Enter the international WhatsApp number when prompted, then follow the pairing i
 ## KataBump deployment
 
 1. Sign in at [KataBump](https://katabump.com/) and create a Node.js server.
-2. Upload the repository ZIP from the [Code → Download ZIP](https://github.com/brianndichi34/BRITECH-MD/archive/refs/heads/main.zip) link, or clone the private repository using credentials configured securely in the panel.
-3. Extract the ZIP so `package.json` and `index.js` are at the project root.
-4. Set Node.js 20 or newer and the startup command to `npm start`.
-5. Configure the environment variables below in the host panel.
-6. Ensure the host preserves the `session/auth` directory across restarts. Upload your generated session folder securely to that persistent location.
-7. Start the server and confirm the log reports that BRITECH MD is connected.
+2. Upload the repository ZIP from the [Code → Download ZIP](https://github.com/brianndichi34/BRITECH-MD/archive/refs/heads/main.zip) link, or clone the private repository using credentials configured securely in the panel. Extract it so `package.json`, `index.js`, and `.env.example` are at `/home/container` (the project root).
+3. In the KataBump **Startup** tab, select Node.js 20 or newer and set **JS FILE** to `index.js`. The app starts with `npm start`; do not put the SESSION_ID into the JS FILE or ADDITIONAL PACKAGES boxes.
+4. Open **Files** in the KataBump panel and go to `/home/container`, the same folder containing `package.json`. Create a new file named exactly `.env` (include the leading dot). Open `.env.example` from the ZIP, copy its contents into `.env`, then replace the example `SESSION_ID=BRITECH2:PASTE_YOUR_COMPLETE_SESSION_ID_HERE` line with your complete value. The line should be `SESSION_ID=BRITECH2:...` with no quotes, spaces around `=`, or line breaks. Do not paste the value into `package.json`, the source code, or a public GitHub file.
+5. Save `.env`. If you use the ZIP upload, upload `.env` as a separate file after extraction; it is intentionally excluded from the repository ZIP because `.gitignore` keeps real secrets out of Git. Keep the full value on one line and never share the `.env` file.
+6. Ensure `/home/container/session/auth` is persistent. If that folder already contains credentials, back it up and clear it before first startup with `SESSION_ID`; the bot will not overwrite an existing auth session when importing the ID.
+7. Restart the server from the KataBump console. On startup, the bot imports the archive into `session/auth`; confirm logs show `Loaded SESSION_ID into auth folder` followed by `BRITECH MD connected`.
 
-KataBump's web upload process requires a ZIP containing `package.json` and the entry file; its console can also clone a Git repository. See [official upload instructions](https://docs.katabump.com/launch-your-bot/upload-via-web/) and [FAQ](https://docs.katabump.com/faq/).
+KataBump's web upload process requires a ZIP containing `package.json` and the entry file; its console can also clone a Git repository. KataBump documents `.env` placement at the project root and uploading via its web manager or SFTP. See [environment-variable instructions](https://docs.katabump.com/launch-your-bot/environment-variables/), [upload instructions](https://docs.katabump.com/launch-your-bot/upload-via-web/), and [FAQ](https://docs.katabump.com/faq/).
 
 ## Requirements
 
@@ -93,6 +93,7 @@ KataBump's web upload process requires a ZIP containing `package.json` and the e
 | `OWNER_EMAIL` | No | Contact shown by owner command |
 | `PREFIX` | No | `.` |
 | `TIMEZONE` | No | `Africa/Nairobi` |
+| `SESSION_ID` | Needed when importing a generated session | Complete `BRITECH2:` value; put it in `.env` at project root |
 | `SESSION_DIR` | Hosted | `./session/auth`; use a persistent path |
 | `PAIRING_DASHBOARD_TOKEN` | Yes for web pairing | Long random secret protecting the pairing page API |
 | `PAIRING_PORT` / `PORT` | No | Web dashboard port; default `3000` |
