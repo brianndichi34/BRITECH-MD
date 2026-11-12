@@ -11,7 +11,7 @@ permissions:
 jobs:
   pair:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 6
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,24 +26,46 @@ jobs:
             exit 1
           fi
       - run: npm install --ignore-scripts
+      - name: Start with a clean session workspace
+        run: rm -rf session session-auth.zip session-auth.zip.enc SESSION_ID.txt SESSION_ID.txt.enc
       - name: Request pairing code and wait for WhatsApp link
         env:
           PHONE_NUMBER: ${{ inputs.phone_number }}
           SESSION_DIR: ./session/auth
           CI: "true"
         run: npm run session:ci
-      - name: Encrypt session archive
+      - name: Create SESSION_ID and encrypted backup
         env:
           SESSION_ARCHIVE_PASSWORD: ${{ secrets.SESSION_ARCHIVE_PASSWORD }}
         run: |
+          set -euo pipefail
           if [ ! -d session/auth ] || [ -z "$(ls -A session/auth)" ]; then
-            echo "::error::No authentication files were created."
+            echo "::error::No authentication files were created after pairing."
             exit 1
           fi
+          # SESSION_ID is the base64-encoded ZIP of the complete Baileys auth folder.
           zip -qr session-auth.zip session
+          base64 -w 0 session-auth.zip > SESSION_ID.txt
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -in SESSION_ID.txt -out SESSION_ID.txt.enc -pass env:SESSION_ARCHIVE_PASSWORD
           openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -in session-auth.zip -out session-auth.zip.enc -pass env:SESSION_ARCHIVE_PASSWORD
-          rm -f session-auth.zip
-      - uses: actions/upload-artifact@v4
+          {
+            echo "## BRITECH MD session generated"
+            echo ""
+            echo "- WhatsApp authentication files were created."
+            echo "- Encrypted SESSION_ID artifact: `britech-session-id-encrypted`"
+            echo "- Encrypted auth-folder backup: `britech-session-encrypted`"
+            echo "- Download an artifact and decrypt it with your repository secret on your own trusted device."
+            echo "- Do not paste the session ID into public chats, issues, or logs."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload encrypted SESSION_ID
+        uses: actions/upload-artifact@v4
+        with:
+          name: britech-session-id-encrypted
+          path: SESSION_ID.txt.enc
+          retention-days: 1
+          if-no-files-found: error
+      - name: Upload encrypted auth-folder backup
+        uses: actions/upload-artifact@v4
         with:
           name: britech-session-encrypted
           path: session-auth.zip.enc
