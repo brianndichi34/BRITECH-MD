@@ -1,0 +1,51 @@
+name: BRITECH MD — Generate WhatsApp Session
+on:
+  workflow_dispatch:
+    inputs:
+      phone_number:
+        description: "WhatsApp number with country code, digits only (example: 2547XXXXXXXX)"
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  pair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validate archive password secret
+        env:
+          SESSION_ARCHIVE_PASSWORD: ${{ secrets.SESSION_ARCHIVE_PASSWORD }}
+        run: |
+          if [ -z "$SESSION_ARCHIVE_PASSWORD" ]; then
+            echo "::error::Add SESSION_ARCHIVE_PASSWORD under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+      - run: npm install --ignore-scripts
+      - name: Request pairing code and wait for WhatsApp link
+        env:
+          PHONE_NUMBER: ${{ inputs.phone_number }}
+          SESSION_DIR: ./session/auth
+          CI: "true"
+        run: npm run session:ci
+      - name: Encrypt session archive
+        env:
+          SESSION_ARCHIVE_PASSWORD: ${{ secrets.SESSION_ARCHIVE_PASSWORD }}
+        run: |
+          if [ ! -d session/auth ] || [ -z "$(ls -A session/auth)" ]; then
+            echo "::error::No authentication files were created."
+            exit 1
+          fi
+          zip -qr session-auth.zip session
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -in session-auth.zip -out session-auth.zip.enc -pass env:SESSION_ARCHIVE_PASSWORD
+          rm -f session-auth.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: britech-session-encrypted
+          path: session-auth.zip.enc
+          retention-days: 1
+          if-no-files-found: error
