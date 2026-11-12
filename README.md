@@ -33,10 +33,11 @@
 3. Open the **Actions** tab → **BRITECH MD — Generate WhatsApp Session** → **Run workflow**.
 4. Enter your WhatsApp number with country code and digits only, e.g. `2547XXXXXXXX`.
 5. Start the workflow. Open its run log and use the displayed one-time pairing code in WhatsApp → Linked devices → Link with phone number instead.
-6. Wait for the workflow to finish successfully. Download the encrypted `britech-session-encrypted` artifact from that run.
-7. Decrypt it on a trusted computer with the password you stored as the GitHub secret, then transfer the extracted `session/auth` folder securely to your host's persistent session directory.
+6. Wait for the workflow to finish successfully. Open the run's **Artifacts** section.
+7. Download `britech-session-id-encrypted` to obtain the session string, or `britech-session-encrypted` to obtain the auth folder.
+8. Decrypt the selected artifact on your own trusted device using the password stored as the GitHub secret. The decrypted `SESSION_ID.txt` contains the base64 session string; keep it private. Alternatively, extract the auth-folder ZIP and transfer `session/auth` securely to your host's persistent session directory.
 
-The artifact is encrypted with AES-256-CBC and PBKDF2 before upload. The workflow does not commit session credentials to Git. The pairing code appears in the private repository's Actions log; keep repository access restricted and do not share the run log. GitHub Actions secrets are encrypted, but access to repository write permissions is still sensitive.
+Both artifacts are encrypted with AES-256-CBC and PBKDF2 before upload. The workflow does not print the session string in Actions logs or commit session credentials to Git. The workflow does not commit session credentials to Git. The pairing code appears in the private repository's Actions log; keep repository access restricted and do not share the run log. GitHub Actions secrets are encrypted, but access to repository write permissions is still sensitive.
 
 To decrypt on Linux/macOS with OpenSSL:
 ```bash
