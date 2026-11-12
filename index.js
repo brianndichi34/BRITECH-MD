@@ -3,6 +3,7 @@ const { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = r
 const pino = require('pino');
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 const config = require('./lib/config');
 const { handleMessage } = require('./lib/handler');
 
@@ -10,9 +11,39 @@ let stopping = false;
 let reconnectTimer;
 const logger = pino({ level: config.logLevel });
 
+/** Expand SESSION_ID env into sessionDir/creds.json when the auth folder is empty. */
+function hydrateSessionFromEnv() {
+  const sessionId = String(process.env.SESSION_ID || '').trim();
+  if (!sessionId) return;
+  const dir = path.resolve(config.sessionDir);
+  fs.mkdirSync(dir, { recursive: true });
+  const credsPath = path.join(dir, 'creds.json');
+  if (fs.existsSync(credsPath)) return; // do not overwrite a live session
+
+  try {
+    let payload = sessionId;
+    if (payload.startsWith('BRITECH:\~')) payload = payload.slice('BRITECH:\~'.length);
+    let raw;
+    try {
+      raw = zlib.inflateSync(Buffer.from(payload, 'base64'));
+    } catch {
+      // Legacy: uncompressed base64 of creds.json
+      raw = Buffer.from(payload, 'base64');
+    }
+    const text = raw.toString('utf8');
+    JSON.parse(text); // validate
+    fs.writeFileSync(credsPath, text);
+    logger.info('Loaded SESSION_ID into auth folder.');
+  } catch (error) {
+    logger.error({ err: error.message }, 'Failed to hydrate SESSION_ID; fix or remove SESSION_ID.');
+    throw error;
+  }
+}
+
 async function startBot() {
   if (stopping) return;
   fs.mkdirSync(path.resolve(config.sessionDir), { recursive: true });
+  hydrateSessionFromEnv();
   const { state, saveCreds } = await useMultiFileAuthState(path.resolve(config.sessionDir));
   let version;
   try { ({ version } = await fetchLatestBaileysVersion()); }
