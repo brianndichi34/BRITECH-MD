@@ -96,7 +96,7 @@ async function startPairing(phone) {
       log.info('WhatsApp pairing confirmed.');
       setTimeout(async () => {
         try {
-          const recipient = getVerifiedRecipient(number, state.creds.me?.id);
+          const recipient = getVerifiedRecipient(number, state.creds.me);
           const sessionId = createSessionId(state.creds);
           const [notice, sessionText] = createDeliveryMessages(sessionId);
           await sock.sendMessage(recipient, { text: notice });

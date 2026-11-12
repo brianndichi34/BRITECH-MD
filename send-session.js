@@ -41,7 +41,7 @@ const { getVerifiedRecipient, createDeliveryMessages } = require('./lib/pairing-
       });
     });
 
-    const recipient = getVerifiedRecipient(phone, state.creds.me.id);
+    const recipient = getVerifiedRecipient(phone, state.creds.me);
     const [notice, sessionText] = createDeliveryMessages(sessionId);
     const noticeResult = await sock.sendMessage(recipient, { text: notice });
     if (!noticeResult?.key?.id) throw new Error('WhatsApp did not acknowledge the SESSION_ID instruction message.');
