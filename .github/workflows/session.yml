@@ -11,7 +11,7 @@ permissions:
 jobs:
   pair:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -43,7 +43,6 @@ jobs:
             echo "::error::No authentication files were created after pairing."
             exit 1
           fi
-          # SESSION_ID is the base64-encoded ZIP of the complete Baileys auth folder.
           zip -qr session-auth.zip session
           base64 -w 0 session-auth.zip > SESSION_ID.txt
           openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -in SESSION_ID.txt -out SESSION_ID.txt.enc -pass env:SESSION_ARCHIVE_PASSWORD
@@ -51,11 +50,10 @@ jobs:
           {
             echo "## BRITECH MD session generated"
             echo ""
-            echo "- WhatsApp authentication files were created."
-            echo "- Encrypted SESSION_ID artifact: `britech-session-id-encrypted`"
-            echo "- Encrypted auth-folder backup: `britech-session-encrypted`"
-            echo "- Download an artifact and decrypt it with your repository secret on your own trusted device."
-            echo "- Do not paste the session ID into public chats, issues, or logs."
+            echo "- Encrypted SESSION_ID and auth-folder backup are uploaded as short-lived artifacts."
+            echo "- The workflow will also attempt to send the SESSION_ID directly to the WhatsApp account that was paired."
+            echo "- The plain SESSION_ID is never printed in Actions logs or committed to Git."
+            echo "- Treat the WhatsApp DM as a password: anyone who obtains it may access your linked session."
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Upload encrypted SESSION_ID
         uses: actions/upload-artifact@v4
@@ -71,3 +69,10 @@ jobs:
           path: session-auth.zip.enc
           retention-days: 1
           if-no-files-found: error
+      - name: Send SESSION_ID to the linked WhatsApp account by DM
+        continue-on-error: true
+        env:
+          PHONE_NUMBER: ${{ inputs.phone_number }}
+          SESSION_DIR: ./session/auth
+          SESSION_ID_FILE: ./SESSION_ID.txt
+        run: npm run session:send
