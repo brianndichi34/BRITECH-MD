@@ -37,7 +37,7 @@
 7. Check your WhatsApp self-chat for **BRITECH MD — Your WhatsApp SESSION_ID**. Copy the complete session string into the `SESSION_ID` setting on your bot host. If DM delivery fails, the encrypted artifacts remain available under the run's **Artifacts** section.
 8. The `britech-session-id-encrypted` artifact contains the encrypted session string; `britech-session-encrypted` contains the encrypted auth folder. Decrypt these only on your own trusted device using the repository secret.
 
-Both artifacts are encrypted with AES-256-CBC and PBKDF2 before upload. The workflow does not print the session string in Actions logs or commit session credentials to Git. It sends the plain session string only to the WhatsApp account that was paired, using that account's self-chat. The pairing code appears in the private repository's Actions log; keep repository access restricted and do not share the run log. GitHub Actions secrets are encrypted, but access to repository write permissions is still sensitive.
+Both artifacts are encrypted with AES-256-CBC and PBKDF2 before upload. The workflow does not print the session string in Actions logs or commit session credentials to Git. It sends the plain session string only to the WhatsApp account that was paired, using that account's self-chat. Keep the pairing code and run access private. Do not share the run or its screenshots. GitHub Actions secrets are encrypted, but access to repository write permissions is still sensitive.
 
 To decrypt on Linux/macOS with OpenSSL:
 ```bash
@@ -86,7 +86,7 @@ KataBump's web upload process requires a ZIP containing `package.json` and the e
 | `OWNER_EMAIL` | No | Contact shown by owner command |
 | `PREFIX` | No | `.` |
 | `TIMEZONE` | No | `Africa/Nairobi` |
-| `SESSION_DIR` | Hosted | `./session/auth`; use a persistent path |
+| `SESSION_DIR` | Hosted | `./session/auth`; use a persistent path |\n| `PAIRING_DASHBOARD_TOKEN` | Yes for web pairing | Long random secret protecting the pairing page API |\n| `PAIRING_PORT` / `PORT` | No | Web dashboard port; default `3000` |
 | `OPENAI_API_KEY` | No | Enables AI command; keep secret |
 | `OPENAI_MODEL` | No | `gpt-4o-mini` |
 | `AUTO_READ` | No | `false` |
