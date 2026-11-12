@@ -1,118 +1,119 @@
 # BRITECH MD — WhatsApp Multi-Device Bot
 
-An independently built WhatsApp assistant using Node.js and Baileys.
+<p align="center">
+  <strong>BRIAN NDICHI · Node.js · Baileys</strong><br>
+  A WhatsApp assistant with commands, group tools, utilities and optional AI.
+</p>
 
-## What is included
+<p align="center">
+  <a href="https://github.com/brianndichi34/BRITECH-MD/fork"><img alt="Fork" src="https://img.shields.io/badge/FORK-BRITECH%20MD-8250df?style=for-the-badge"></a>
+  <a href="https://github.com/brianndichi34/BRITECH-MD/actions/workflows/session.yml"><img alt="Generate session" src="https://img.shields.io/badge/GENERATE-SESSION%20ID-238636?style=for-the-badge"></a>
+  <a href="https://github.com/brianndichi34/BRITECH-MD/archive/refs/heads/main.zip"><img alt="Download ZIP" src="https://img.shields.io/badge/DOWNLOAD-ZIP-0969da?style=for-the-badge"></a>
+  <a href="https://github.com/brianndichi34/BRITECH-MD/actions/workflows/ci.yml"><img alt="Tests" src="https://img.shields.io/badge/TESTS-GITHUB%20ACTIONS-1f6feb?style=for-the-badge"></a>
+</p>
 
-- General commands: menu, ping, alive, owner, info and repository link
-- Utilities: date, time, calculator, quotes and echo
-- Optional AI replies through the OpenAI API
-- Group tools: group information, admin list, mentions, invite link and admin moderation
-- WhatsApp linked-device pairing helper
-- Docker, Render and Railway deployment configuration
+## Deployment options
 
-## Requirements
+| Platform | Method | Notes |
+|---|---|---|
+| [KataBump](https://control.katabump.com/) | Upload ZIP or clone repository | Node.js server; configure persistent files and environment variables. |
+| [Railway](https://railway.com/) | Deploy from GitHub using `railway.json` and Dockerfile | Attach a persistent volume at `/app/session`; usage may be charged. |
+| [Render](https://dashboard.render.com/) | New → Blueprint, select this repository | Background worker blueprint; persistent disk/worker may be paid. |
+| [Heroku](https://dashboard.heroku.com/new?template=https://github.com/brianndichi34/BRITECH-MD) | Deploy button / dashboard | Check current pricing; configure durable session storage separately. |
+| [Docker / VPS](https://docs.docker.com/get-started/) | Build the included Dockerfile | Mount persistent storage at `/app/session`. |
 
-- Node.js 20 or newer
-- A WhatsApp account that can link another device
-- A persistent disk/volume for the WhatsApp authentication files
+**Important:** WhatsApp requires a long-running process and durable authentication storage. Do not deploy `index.js` as a Vercel Function or a serverless function. Vercel is suitable only for a separate static information page.
 
-## Pair WhatsApp locally
+## Generate a WhatsApp session ID
+
+### Recommended: GitHub Actions (private repository)
+
+1. Open the repository **Settings → Secrets and variables → Actions**.
+2. Add a repository secret named `SESSION_ARCHIVE_PASSWORD`. Use a long, unique password and keep it private.
+3. Open the **Actions** tab → **BRITECH MD — Generate WhatsApp Session** → **Run workflow**.
+4. Enter your WhatsApp number with country code and digits only, e.g. `2547XXXXXXXX`.
+5. Start the workflow. Open its run log and use the displayed one-time pairing code in WhatsApp → Linked devices → Link with phone number instead.
+6. Wait for the workflow to finish successfully. Download the encrypted `britech-session-encrypted` artifact from that run.
+7. Decrypt it on a trusted computer with the password you stored as the GitHub secret, then transfer the extracted `session/auth` folder securely to your host's persistent session directory.
+
+The artifact is encrypted with AES-256-CBC and PBKDF2 before upload. The workflow does not commit session credentials to Git. The pairing code appears in the private repository's Actions log; keep repository access restricted and do not share the run log. GitHub Actions secrets are encrypted, but access to repository write permissions is still sensitive.
+
+To decrypt on Linux/macOS with OpenSSL:
+```bash
+openssl enc -d -aes-256-cbc -pbkdf2 -in session-auth.zip.enc -out session-auth.zip
+unzip session-auth.zip
+```
+
+On Windows, use an OpenSSL build to decrypt, then extract the ZIP. Never upload the decrypted archive or auth folder to a public location.
+
+### Generate locally / on an interactive host
 
 ```bash
 npm install
-cp .env.example .env
-# Edit .env if required
 npm run session
-```
+``
 
-Enter your WhatsApp number in international format, digits only (Kenya example: 2547XXXXXXXX). On your phone open WhatsApp → Linked devices → Link a device → Link with phone number instead. Enter the pairing code printed in the terminal. Wait for the connected confirmation, then run:
+Enter the international WhatsApp number when prompted, then follow the pairing instructions printed in the terminal. Do not run the session generator and bot simultaneously against the same auth folder.
 
-```bash
-npm start
-```
+**Existing session safety:** the generator refuses to overwrite a non-empty auth folder by default. Back up existing credentials before intentionally replacing them; never share them.
 
-Do not run the session generator and bot simultaneously against the same auth directory.
+## KataBump deployment
+
+1. Sign in at [KataBump](https://katabump.com/) and create a Node.js server.
+2. Upload the repository ZIP from the [Code → Download ZIP](https://github.com/brianndichi34/BRITECH-MD/archive/refs/heads/main.zip) link, or clone the private repository using credentials configured securely in the panel.
+3. Extract the ZIP so `package.json` and `index.js` are at the project root.
+4. Set Node.js 20 or newer and the startup command to `npm start`.
+5. Configure the environment variables below in the host panel.
+6. Ensure the host preserves the `session/auth` directory across restarts. Upload your generated session folder securely to that persistent location.
+7. Start the server and confirm the log reports that BRITECH MD is connected.
+
+KataBump's web upload process requires a ZIP containing `package.json` and the entry file; its console can also clone a Git repository. See [official upload instructions](https://docs.katabump.com/launch-your-bot/upload-via-web/) and [FAQ](https://docs.katabump.com/faq/).
+
+## Requirements
+
+- Node.js 20+
+- WhatsApp account with linked-device access
+- Persistent storage for authentication files
 
 ## Environment variables
 
-| Variable | Required | Default / example | Purpose |
-|---|---|---|---|
-| BOT_NAME | No | BRITECH MD | Bot display name |
-| OWNER_NAME | No | BRIAN NDICHI | Owner display name |
-| OWNER_NUMBER | Yes | 2547XXXXXXXX | Owner number, country code and digits only |
-| OWNER_EMAIL | No | owner email | Contact shown by .owner |
-| PREFIX | No | . | Command prefix |
-| TIMEZONE | No | Africa/Nairobi | Time/date commands |
-| SESSION_DIR | Yes for hosted worker | ./session/auth | Baileys auth directory |
-| OPENAI_API_KEY | No | blank | Enables .ai; keep it secret |
-| OPENAI_MODEL | No | gpt-4o-mini | Model available to your API account |
-| AUTO_READ | No | false | Mark incoming messages as read |
-| LOG_LEVEL | No | info | Pino log level |
-| WELCOME_MESSAGE | No | blank | Optional group welcome text; supports {user} |
-
-AUTO_TYPING is reserved and is not currently implemented. Do not set SESSION_DIR to an ephemeral filesystem on a hosted worker. Mount persistent storage at /app/session and set SESSION_DIR=/app/session/auth.
+| Variable | Required | Default / purpose |
+|---|---|---|
+| `BOT_NAME` | No | `BRITECH MD` |
+| `OWNER_NAME` | No | `BRIAN NDICHI` |
+| `OWNER_NUMBER` | Recommended | Owner number in international digits |
+| `OWNER_EMAIL` | No | Contact shown by owner command |
+| `PREFIX` | No | `.` |
+| `TIMEZONE` | No | `Africa/Nairobi` |
+| `SESSION_DIR` | Hosted | `./session/auth`; use a persistent path |
+| `OPENAI_API_KEY` | No | Enables AI command; keep secret |
+| `OPENAI_MODEL` | No | `gpt-4o-mini` |
+| `AUTO_READ` | No | `false` |
+| `LOG_LEVEL` | No | `info` |
+| `WELCOME_MESSAGE` | No | Optional group welcome message; supports `{user}` |
 
 ## Commands
 
-### General
-- .menu / .help
-- .ping
-- .alive
-- .owner
-- .info
-- .repo
+- General: `.menu`, `.help`, `.ping`, `.alive`, `.owner`, `.info`, `.repo`
+- Utilities: `.time`, `.date`, `.calc 25*(4+2)`, `.quote`, `.echo text`, `.ai question`
+- Groups: `.groupinfo`, `.admins`, `.tagall`, `.hidetag`, `.link`, `.close`, `.open`, `.kick`, `.promote`, `.demote`
 
-### Utilities
-- .time
-- .date
-- .calc 25*(4+2)
-- .quote
-- .echo your text
-- .ai your question (requires OPENAI_API_KEY)
-
-### Group commands
-- .groupinfo
-- .admins
-- .tagall [message]
-- .hidetag [message]
-- .link
-- .close / .open
-- .kick @member
-- .promote @member
-- .demote @member
-
-For member-targeting commands, mention a member or reply to their message. The bot must be a group administrator for moderation actions. Group commands are intended for groups where the bot has appropriate permissions.
-
-## Recommended deployment: Render Background Worker
-
-This is an always-on WhatsApp connection, not a normal website. **Do not deploy the Baileys process as a Vercel Function.** Vercel can host the static information page in vercel-site/, but the bot needs a long-running process and persistent storage.
-
-1. Push this repository to GitHub.
-2. In Render choose New → Blueprint and select this repository.
-3. Render reads render.yaml and defines a Docker Background Worker with a persistent disk mounted at /app/session.
-4. Apply the Blueprint. The included starter worker and disk may incur charges; check Render's current pricing before confirming.
-5. Configure environment variables. The render.yaml includes the owner details, prefix, timezone and session path as defaults. Add OPENAI_API_KEY only if you want the .ai command.
-6. Pair WhatsApp once using the host's interactive shell/console with `npm run session`. Keep the auth directory on the persistent disk. Then start/restart the worker with `npm start`.
-
-If the host cannot provide an interactive shell, generate the session on a trusted computer and transfer the entire session/auth directory securely to the persistent volume. Never commit or publicly share it.
-
-### Railway / Docker / VPS
-
-The repository includes railway.json and a Dockerfile. Use a persistent volume mounted at /app/session and set SESSION_DIR=/app/session/auth. Pair once through an interactive console, then run npm start. For Docker, build with `docker build -t britech-md .` and mount a persistent volume at /app/session.
-
-### Vercel
-
-The WhatsApp bot itself is not suitable for Vercel Functions because it requires a persistent, continuously running connection and durable auth storage. The optional static information page is in vercel-site/ and can be deployed separately; it does not run the bot.
-
-## Security and account safety
-
-- The session/auth directory contains credentials and encryption keys. Treat it like a password.
-- Never commit .env, pairing codes, session files or screenshots of them.
-- Keep OPENAI_API_KEY in your host's environment-variable settings, never in source code.
-- Do not run bulk unsolicited messaging, spam, scraping or harassment. Follow WhatsApp's terms and applicable law.
-- This is an unofficial WhatsApp Web client. Protocol changes may require a Baileys update; uninterrupted operation cannot be guaranteed.
+Group moderation commands require the bot to be an administrator. Use only in groups where you have permission.
 
 ## Tests
 
-Run `npm test` to check JavaScript syntax. This does not verify a live WhatsApp login, message delivery, OpenAI access or hosted deployment. After pairing, test .menu, .ping, .calc 5*5 and .time from a separate WhatsApp account. Test group commands only in a test group where the bot has admin rights.
+GitHub Actions runs syntax checks on pushes and pull requests. Locally:
+```bash
+npm install
+npm test
+``
+
+Syntax checks do not prove a live WhatsApp login or message delivery. After pairing, test `.menu`, `.ping`, `.calc 5*5` and `.time` from another WhatsApp account.
+
+## Security
+
+- Never commit `.env`, pairing codes, session files, or auth archives.
+- Keep this repository private while using the GitHub pairing workflow.
+- Limit repository write access; collaborators with write access may be able to view workflow logs and repository secrets.
+- Never expose `OPENAI_API_KEY` or `SESSION_ARCHIVE_PASSWORD`.
+- WhatsApp protocol changes can require future Baileys updates. Use the bot responsibly and follow WhatsApp's terms.
