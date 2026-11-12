@@ -24,6 +24,13 @@
 
 **Important:** WhatsApp requires a long-running process and durable authentication storage. Do not deploy `index.js` as a Vercel Function or a serverless function. Vercel is suitable only for a separate static information page.
 
+## Keith MD–style pairing experience
+The pairing page is designed to make phone-number pairing easy on mobile: enter the international WhatsApp number, request a code, then view the paired number and pairing code in separate display areas. Use **Copy Pair Code** to copy only the one-time code, paste it into WhatsApp → Linked devices → Link with phone number instead, and approve the request. Never share the one-time code.
+
+For GitHub Actions session generation, the workflow sends a short instruction followed by the `SESSION_ID` as a separate plain-text WhatsApp message to the same number, only after checking that the entered number matches the account that completed pairing. Long-press the standalone message to copy it. Treat that value as a password; do not post it in issues, logs, screenshots, or chat. Dashboard-based pairing and GitHub Actions session generation are separate deployment paths; configure the dashboard with `PAIRING_DASHBOARD_TOKEN` and `SESSION_DIR` before exposing it.
+
+The automated test suite checks the pairing display/copy controls, number-match guard, standalone text-message delivery code path, and documentation. It does not perform a real WhatsApp login or prove delivery to a phone; verify those only through a user-controlled live deployment.
+
 ## Generate a WhatsApp session ID
 
 ### Recommended: GitHub Actions (private repository)
@@ -113,7 +120,7 @@ Syntax checks do not prove a live WhatsApp login or message delivery. After pair
 
 ## Security
 
-- Never commit `.env`, pairing codes, session files, or auth archives. Treat the SESSION_ID DM as a password and do not forward it or share screenshots of it.
+- Never commit `.env`, pairing codes, session files, or auth archives. Treat the SESSION_ID WhatsApp message as a password and do not forward it or share screenshots of it.
 - Keep this repository private while using the GitHub pairing workflow.
 - Limit repository write access; collaborators with write access may be able to view workflow logs and repository secrets.
 - Never expose `OPENAI_API_KEY` or `SESSION_ARCHIVE_PASSWORD`.
