@@ -19,16 +19,16 @@ test('pairing dashboard has separate phone and code displays with a code-copy ac
 });
 
 test('session sender verifies the target number matches the paired account before sending', () => {
-  assert.match(sender, /accountNumber !== phone/);
-  assert.match(sender, /if \(accountNumber !== phone\)[\s\S]*?throw new Error/);
-  assert.match(sender, /const recipient = phone \+ '@s\.whatsapp\.net'/);
+  assert.match(sender, /getVerifiedRecipient\(phone, state\.creds\.me\.id\)/);
+  assert.doesNotMatch(sender, /phone \+ '@s\.whatsapp\.net'/);
 });
 
 test('session sender emits the session ID as a separate plain-text WhatsApp message', () => {
-  assert.match(sender, /text: 'BRITECH MD SESSION_ID\\nCopy the next message/);
-  assert.match(sender, /sendMessage\(recipient, \{ text: sessionId \}\)/);
+  assert.match(sender, /createDeliveryMessages\(sessionId\)/);
+  assert.match(sender, /sendMessage\(recipient, \{ text: sessionText \}\)/);
+  assert.match(sender, /sessionResult\?\.key\?\.id/);
+  assert.match(sender, /SESSION_ID was sent separately as copyable text/);
   assert.doesNotMatch(sender, /sendMessage\(recipient, \{ document:/);
-  assert.match(sender, /SESSION_ID delivered as plain copyable text/);
 });
 
 test('pairing documentation warns users to keep session data private and describes direct text copying', () => {
@@ -50,13 +50,15 @@ test('dashboard creates a BRITECH session ID compatible with the bot loader', ()
 test('dashboard only sends to the number that completed pairing', () => {
   assert.equal(
     pairingSession.getVerifiedRecipient('254712345678', '254712345678:4@s.whatsapp.net'),
-    '254712345678@s.whatsapp.net'
+    '254712345678:4@s.whatsapp.net'
   );
   assert.throws(
     () => pairingSession.getVerifiedRecipient('254712345678', '254700000000:4@s.whatsapp.net'),
     /does not match.*No session was sent/
   );
   assert.match(server, /getVerifiedRecipient\(number, state\.creds\.me\?\.id\)/);
+  assert.match(sender, /getVerifiedRecipient\(phone, state\.creds\.me\.id\)/);
+  assert.match(sender, /WhatsApp accepted both messages in the verified account self-chat/);
 });
 
 test('dashboard sends the SESSION_ID as a standalone text message and reports delivery status', () => {
@@ -70,4 +72,7 @@ test('dashboard sends the SESSION_ID as a standalone text message and reports de
   assert.match(dashboard, /sending_session/);
   assert.match(dashboard, /SESSION_ID sent as a separate text message/);
   assert.match(dashboard, /startsWith\('WhatsApp linked,'\)/);
+  assert.equal(pairingSession.createDeliveryMessages('base64-session-archive')[1], 'base64-session-archive');
+  assert.match(fs.readFileSync(path.join(root, '.github/workflows/session.yml'), 'utf8'), /Send plain-text SESSION_ID/);
+  assert.doesNotMatch(fs.readFileSync(path.join(root, '.github/workflows/session.yml'), 'utf8'), /continue-on-error: true/);
 });

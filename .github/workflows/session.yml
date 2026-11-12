@@ -71,7 +71,6 @@ jobs:
           retention-days: 1
           if-no-files-found: error
       - name: Send plain-text SESSION_ID to the verified pairing number
-        continue-on-error: true
         env:
           PHONE_NUMBER: ${{ inputs.phone_number }}
           SESSION_DIR: ./session/auth

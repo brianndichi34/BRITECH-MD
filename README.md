@@ -27,7 +27,7 @@
 ## Keith MD–style pairing experience
 The pairing page is designed to make phone-number pairing easy on mobile: enter the international WhatsApp number, request a code, then view the paired number and pairing code in separate display areas. Use **Copy Pair Code** to copy only the one-time code, paste it into WhatsApp → Linked devices → Link with phone number instead, and approve the request. Never share the one-time code.
 
-After dashboard pairing is confirmed, the dashboard sends a short instruction followed by the `SESSION_ID` as a separate plain-text WhatsApp message to the entered number. It verifies that the WhatsApp account that linked matches that number before delivery; the page reports when delivery is in progress, succeeded, or failed. The GitHub Actions session workflow uses the same standalone-message approach. Long-press the standalone message to copy it. Treat that value as a password; do not post it in issues, logs, screenshots, or chat. Configure the dashboard with `PAIRING_DASHBOARD_TOKEN` and `SESSION_DIR` before exposing it.
+After dashboard pairing is confirmed, the dashboard sends a short instruction followed by the `SESSION_ID` as a separate plain-text WhatsApp message in the linked account’s self-chat. It verifies that the WhatsApp account that linked matches the entered number and uses the account’s own WhatsApp JID for delivery. The GitHub Actions session workflow uses the same self-chat routing. Long-press the standalone message to copy it. Delivery failures are reported rather than silently ignored. Treat the session value as a password; do not post it in issues, logs, screenshots, or chat. Configure the dashboard with `PAIRING_DASHBOARD_TOKEN` and `SESSION_DIR` before exposing it.
 
 The automated test suite checks the pairing display/copy controls, BRITECH session-ID encoding, number-match guard, standalone text-message delivery code path, delivery status, and documentation. It does not perform a real WhatsApp login or prove delivery to a phone; verify those only through a user-controlled live deployment.
 
@@ -59,7 +59,7 @@ On Windows, use an OpenSSL build to decrypt, then extract the ZIP. Never upload 
 ```bash
 npm install
 npm run session
-``
+```
 
 Enter the international WhatsApp number when prompted, then follow the pairing instructions printed in the terminal. Do not run the session generator and bot simultaneously against the same auth folder.
 
@@ -93,7 +93,9 @@ KataBump's web upload process requires a ZIP containing `package.json` and the e
 | `OWNER_EMAIL` | No | Contact shown by owner command |
 | `PREFIX` | No | `.` |
 | `TIMEZONE` | No | `Africa/Nairobi` |
-| `SESSION_DIR` | Hosted | `./session/auth`; use a persistent path |\n| `PAIRING_DASHBOARD_TOKEN` | Yes for web pairing | Long random secret protecting the pairing page API |\n| `PAIRING_PORT` / `PORT` | No | Web dashboard port; default `3000` |
+| `SESSION_DIR` | Hosted | `./session/auth`; use a persistent path |
+| `PAIRING_DASHBOARD_TOKEN` | Yes for web pairing | Long random secret protecting the pairing page API |
+| `PAIRING_PORT` / `PORT` | No | Web dashboard port; default `3000` |
 | `OPENAI_API_KEY` | No | Enables AI command; keep secret |
 | `OPENAI_MODEL` | No | `gpt-4o-mini` |
 | `AUTO_READ` | No | `false` |
@@ -114,7 +116,7 @@ GitHub Actions runs syntax and pairing/session behavior checks on pushes and pul
 ```bash
 npm install
 npm test
-``
+```
 
 Syntax checks do not prove a live WhatsApp login or message delivery. After pairing, test `.menu`, `.ping`, `.calc 5*5` and `.time` from another WhatsApp account.
 
