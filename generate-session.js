@@ -18,7 +18,7 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 function publishPairingCode(code) {
   // Keep the one-time code out of stdout / Actions logs.
   fs.writeFileSync(path.join(path.dirname(sessionDir), 'PAIRING_CODE.txt'), code + '\n', { mode: 0o600 });
-  if (summaryPath) {
+  if (ciMode) {\n    // GitHub renders this as a run annotation while the pairing step is still active.\n    // This makes the code available before the generator's wait-for-link step completes.\n    console.log('::notice title=BRITECH MD pairing code::' + code);\n  }\n  if (summaryPath) {
     fs.appendFileSync(summaryPath,
       '\n## BRITECH MD pairing code\n\n' +
       '> Use this code immediately in WhatsApp → Linked devices → Link with phone number instead.\n\n' +
