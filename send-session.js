@@ -22,7 +22,7 @@ const path = require('path');
   sock.ev.on('creds.update', saveCreds);
   try {
     await new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('Timed out reconnecting to WhatsApp to deliver the session file.')), 90000);
+      const timer = setTimeout(() => reject(new Error('Timed out reconnecting to WhatsApp to deliver the session.')), 90000);
       sock.ev.on('connection.update', update => {
         if (update.connection === 'open') { clearTimeout(timer); resolve(); }
         if (update.connection === 'close') {
@@ -32,14 +32,24 @@ const path = require('path');
       });
     });
     const recipient = state.creds.me.id;
-    const fileName = 'BRITECH-MD-SESSION_ID.txt';
+
+    // Plain text so you can long-press → Copy without downloading a file.
+    await sock.sendMessage(recipient, {
+      text:
+        'BRITECH MD — Your WhatsApp SESSION_ID\n\n' +
+        'Copy the full string below (long-press → Copy). Paste it into the SESSION_ID setting on your bot host. Keep it private.\n\n' +
+        sessionId
+    });
+
+    // Optional backup file (same value).
     await sock.sendMessage(recipient, {
       document: Buffer.from(sessionId, 'utf8'),
       mimetype: 'text/plain',
-      fileName,
-      caption: 'BRITECH MD SESSION_ID. Download this text file and copy its complete contents into the SESSION_ID setting on your bot host. Keep it private; it grants access to your WhatsApp session.'
+      fileName: 'BRITECH-MD-SESSION_ID.txt',
+      caption: 'Backup copy of your SESSION_ID (same value as the text message above).'
     });
-    console.log('SESSION_ID text file delivered to the linked WhatsApp self-chat. The ID was not printed in Actions logs.');
+
+    console.log('SESSION_ID delivered as plain text (and file backup) to the linked WhatsApp self-chat. The ID was not printed in Actions logs.');
   } finally {
     try { await sock.end(undefined); } catch {}
   }
