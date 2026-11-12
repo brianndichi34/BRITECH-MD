@@ -87,8 +87,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     try { await sock?.end(undefined); } catch {}
     rl.close();
   }
-})().catch(error => {
+})().then(() => process.exit(0)).catch(error => {
   console.error('\nSession generation failed:', error.message || error);
   rl.close();
-  process.exitCode = 1;
+  process.exit(1);
 });
