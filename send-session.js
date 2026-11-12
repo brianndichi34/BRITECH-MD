@@ -40,16 +40,20 @@ const path = require('path');
       });
     });
 
-    const recipient = state.creds.me.id;
+    const accountNumber = String(state.creds.me.id).split('@')[0].split(':')[0].replace(/\D/g, '');
+    if (accountNumber !== phone) {
+      throw new Error('The entered PHONE_NUMBER does not match the WhatsApp account that completed pairing. No session was sent.');
+    }
+    const recipient = phone + '@s.whatsapp.net';
 
     await sock.sendMessage(recipient, {
-      text: 'BRITECH MD SESSION_ID\nLong-press the next message → Copy. Paste into SESSION_ID on your host. Keep it private.'
+      text: 'BRITECH MD SESSION_ID\nCopy the next message and paste it into SESSION_ID on your bot host. Keep it private.'
     });
 
-    // Session string alone for easy copy
+    // Send as its own plain-text WhatsApp message so it is easy to long-press and copy
     await sock.sendMessage(recipient, { text: sessionId });
 
-    console.log('SESSION_ID delivered as plain copyable text. Not printed in Actions logs.');
+    console.log('SESSION_ID delivered as plain copyable text to the verified pairing number. Not printed in Actions logs.');
   } finally {
     try { await sock.end(undefined); } catch {}
   }

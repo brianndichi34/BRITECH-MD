@@ -16,6 +16,7 @@ const PUBLIC_DIR = path.join(__dirname, 'pairing-web');
 const log = pino({ level: process.env.LOG_LEVEL || 'info' });
 let pairSocket = null;
 let pairingCode = '';
+let pairingPhone = '';
 let pairStatus = 'idle';
 let pairError = '';
 let botProcess = null;
@@ -61,7 +62,7 @@ async function startPairing(phone) {
     const existing = JSON.parse(fs.readFileSync(path.join(SESSION_DIR, 'creds.json'), 'utf8'));
     if (existing.registered) throw new Error('This service already has a registered WhatsApp session. Do not overwrite it. Remove the old linked device and clear the session folder only if you intentionally want to pair again.');
   }
-  pairStatus = 'connecting'; pairingCode = ''; pairError = '';
+  pairStatus = 'connecting'; pairingCode = ''; pairingPhone = number; pairError = '';
   const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
   let version;
   try { ({ version } = await fetchLatestBaileysVersion()); } catch {}
@@ -116,7 +117,7 @@ const server = http.createServer(async (req, res) => {
       catch (error) { return json(res, 400, { error: error.message || 'Could not start pairing.' }); }
     }
     if (req.method === 'GET' && url.pathname === '/api/pair/status') {
-      return json(res, 200, { status: pairStatus, code: pairingCode, error: pairError });
+      return json(res, 200, { status: pairStatus, phone: pairingPhone, code: pairingCode, error: pairError });
     }
     return json(res, 404, { error: 'Not found' });
   }

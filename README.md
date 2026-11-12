@@ -33,11 +33,11 @@
 3. Open the **Actions** tab → **BRITECH MD — Generate WhatsApp Session** → **Run workflow**.
 4. Enter your WhatsApp number with country code and digits only, e.g. `2547XXXXXXXX`.
 5. Start the workflow. Open its run log and use the displayed one-time pairing code in WhatsApp → Linked devices → Link with phone number instead.
-6. Approve the pairing and wait for the workflow to finish. The workflow attempts to send the generated `SESSION_ID` directly as a WhatsApp DM to the same account you just linked.
-7. Check your WhatsApp self-chat for **BRITECH MD — Your WhatsApp SESSION_ID**. Copy the complete session string into the `SESSION_ID` setting on your bot host. If DM delivery fails, the encrypted artifacts remain available under the run's **Artifacts** section.
+6. Approve the pairing and wait for the workflow to finish. The workflow sends the generated `SESSION_ID` as a separate plain-text WhatsApp message to the number you entered, after verifying it matches the paired account.
+7. Check WhatsApp for a BRITECH MD note followed by a separate plain-text message containing the complete `SESSION_ID`; long-press that message to copy it into the `SESSION_ID` setting on your bot host. If DM delivery fails, the encrypted artifacts remain available under the run's **Artifacts** section.
 8. The `britech-session-id-encrypted` artifact contains the encrypted session string; `britech-session-encrypted` contains the encrypted auth folder. Decrypt these only on your own trusted device using the repository secret.
 
-Both artifacts are encrypted with AES-256-CBC and PBKDF2 before upload. The workflow does not print the session string in Actions logs or commit session credentials to Git. It sends the plain session string only to the WhatsApp account that was paired, using that account's self-chat. Keep the pairing code and run access private. Do not share the run or its screenshots. GitHub Actions secrets are encrypted, but access to repository write permissions is still sensitive.
+Both artifacts are encrypted with AES-256-CBC and PBKDF2 before upload. The workflow does not print the session string in Actions logs or commit session credentials to Git. It sends the plain session string only to the verified number entered for pairing, as a plain-text message that can be copied directly. Keep the pairing code and run access private. Do not share the run or its screenshots. GitHub Actions secrets are encrypted, but access to repository write permissions is still sensitive.
 
 To decrypt on Linux/macOS with OpenSSL:
 ```bash
