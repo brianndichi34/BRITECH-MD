@@ -108,18 +108,28 @@ test('archive SESSION_ID importer blocks path traversal and preserves old full Z
   } finally { fs.rmSync(unsafeDir, { recursive: true, force: true }); }
 });
 
-test('web pairing exports all auth files into the compact importable archive format', async () => {
+test('web pairing exports full auth data as a shorter BRITECH3 ID and the bot imports it', async () => {
   const authDir = fs.mkdtempSync(path.join(os.tmpdir(), 'britech-auth-source-'));
   const targetDir = fs.mkdtempSync(path.join(os.tmpdir(), 'britech-auth-target-'));
   try {
     fs.writeFileSync(path.join(authDir, 'creds.json'), JSON.stringify({ registered: true, me: { id: '254712345678@s.whatsapp.net' } }));
     fs.mkdirSync(path.join(authDir, 'keys'));
-    fs.writeFileSync(path.join(authDir, 'keys', 'pre-key.json'), '{"key":"data"}');
+    for (let i = 0; i < 60; i++) {
+      fs.writeFileSync(path.join(authDir, 'keys', `pre-key-${i}.json`), JSON.stringify({ keyId: i, keyData: 'repeated-auth-key-material-'.repeat(30) }));
+    }
     const sessionId = await pairingSession.createAuthArchiveSessionId(authDir);
-    assert.match(sessionId, /^BRITECH2:/);
+    assert.match(sessionId, /^BRITECH3:/);
+    const oldZip = new JSZip();
+    for (const name of fs.readdirSync(authDir, { recursive: true })) {
+      const fullPath = path.join(authDir, name);
+      if (fs.statSync(fullPath).isFile()) oldZip.file(`session/auth/${name.replace(/\\/g, '/')}`, fs.readFileSync(fullPath));
+    }
+    const oldArchive = await oldZip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE', compressionOptions: { level: 9 } });
+    const oldId = pairingSession.createArchiveSessionId(oldArchive);
+    assert.ok(sessionId.length < oldId.length, `BRITECH3 (${sessionId.length}) should be shorter than BRITECH2 (${oldId.length})`);
     const result = await sessionIdLoader.hydrateSessionId(sessionId, targetDir);
-    assert.equal(result.format, 'BRITECH2');
-    assert.equal(fs.readFileSync(path.join(targetDir, 'keys', 'pre-key.json'), 'utf8'), '{"key":"data"}');
+    assert.equal(result.format, 'BRITECH3');
+    assert.equal(fs.readFileSync(path.join(targetDir, 'keys', 'pre-key-12.json'), 'utf8'), JSON.stringify({ keyId: 12, keyData: 'repeated-auth-key-material-'.repeat(30) }));
   } finally {
     fs.rmSync(authDir, { recursive: true, force: true });
     fs.rmSync(targetDir, { recursive: true, force: true });
@@ -159,10 +169,21 @@ test('text delivery failure still leaves an acknowledged Word document', async (
 });
 
 test('GitHub Actions makes a compact archive ID and does not hide delivery outcomes', () => {
-  assert.match(workflow, /createArchiveSessionId/);
+  assert.match(workflow, /createAuthArchiveSessionId/);
   assert.match(workflow, /zip -9 -qr/);
   assert.doesNotMatch(workflow, /continue-on-error: true/);
   assert.match(sender, /deliverSession\(sock, recipient, sessionId\)/);
   assert.match(server, /deliverSession\(sock, recipient, sessionId\)/);
   assert.match(dashboard, /Word document sent/);
+});
+
+test('KataBump guidance explains downloading, extracting, creating, editing, and saving a private .env', () => {
+  const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
+  assert.match(readme, /Download a fresh project ZIP/);
+  assert.match(readme, /upload the project ZIP/);
+  assert.match(readme, /New File/);
+  assert.match(readme, /Press \*\*Save\*\*/);
+  assert.match(readme, /SESSION_ID=BRITECH3:/);
+  const template = fs.readFileSync(path.join(root, '.env.example'), 'utf8');
+  assert.match(template, /^SESSION_ID=\s*$/m);
 });

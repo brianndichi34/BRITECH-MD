@@ -43,7 +43,7 @@ jobs:
           test -s session/auth/creds.json || { echo "::error::creds.json missing"; exit 1; }
           node -e "const c=require('./session/auth/creds.json'); if(!c.registered || !c.me?.id) process.exit(1)"
           zip -9 -qr session-auth.zip session
-          node -e "const fs=require('fs'); const {createArchiveSessionId}=require('./lib/pairing-session'); fs.writeFileSync('SESSION_ID.txt',createArchiveSessionId(fs.readFileSync('session-auth.zip')))"
+          node -e "const fs=require('fs'); const {createAuthArchiveSessionId}=require('./lib/pairing-session'); createAuthArchiveSessionId('./session/auth').then(id=>fs.writeFileSync('SESSION_ID.txt',id)).catch(e=>{console.error(e.message);process.exit(1)})"
           test -s SESSION_ID.txt
           openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -in SESSION_ID.txt -out SESSION_ID.txt.enc -pass env:SESSION_ARCHIVE_PASSWORD
           openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -in session-auth.zip -out session-auth.zip.enc -pass env:SESSION_ARCHIVE_PASSWORD

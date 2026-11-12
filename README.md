@@ -27,7 +27,7 @@
 ## Keith MD–style pairing experience
 The pairing page is designed to make phone-number pairing easy on mobile: enter the international WhatsApp number, request a code, then view the paired number and pairing code in separate display areas. Use **Copy Pair Code** to copy only the one-time code, paste it into WhatsApp → Linked devices → Link with phone number instead, and approve the request. Never share the one-time code.
 
-After dashboard pairing is confirmed, the dashboard sends the `SESSION_ID` to the linked account’s self-chat as a Word document and separately as plain text. It verifies the account against the entered number and uses Baileys’ normalized self JID. Device-qualified phone JIDs, legacy `@c.us`, hosted PN/LID JIDs, and LIDs with a verified phone-number alias are handled; groups, broadcasts, and identities that cannot be tied to the entered number are rejected. The GitHub Actions workflow uses the same self-chat routing. The document is sent first, so it remains available if WhatsApp does not accept the long plain-text message. The archive-based `BRITECH2:` SESSION_ID is compressed and URL-safe; open the Word file to copy its complete value. Treat it as a password; do not post it in issues, logs, screenshots, or chat. Configure the dashboard with `PAIRING_DASHBOARD_TOKEN` and `SESSION_DIR` before exposing it.
+After dashboard pairing is confirmed, the dashboard sends the `SESSION_ID` to the linked account’s self-chat as a Word document and separately as plain text. It verifies the account against the entered number and uses Baileys’ normalized self JID. Device-qualified phone JIDs, legacy `@c.us`, hosted PN/LID JIDs, and LIDs with a verified phone-number alias are handled; groups, broadcasts, and identities that cannot be tied to the entered number are rejected. The GitHub Actions workflow uses the same self-chat routing. The document is sent first, so it remains available if WhatsApp does not accept the long plain-text message. New `BRITECH3:` IDs use Brotli compression over the auth files directly, avoiding the size overhead of a compressed ZIP; older `BRITECH2:` IDs remain supported. Open the Word file to copy the complete value. Treat it as a password; do not post it in issues, logs, screenshots, or chat. Configure the dashboard with `PAIRING_DASHBOARD_TOKEN` and `SESSION_DIR` before exposing it.
 
 The automated test suite checks the pairing display/copy controls, BRITECH session-ID encoding, number-match guard, standalone text-message delivery code path, delivery status, and documentation. It does not perform a real WhatsApp login or prove delivery to a phone; verify those only through a user-controlled live deployment.
 
@@ -41,10 +41,10 @@ The automated test suite checks the pairing display/copy controls, BRITECH sessi
 4. Enter your WhatsApp number with country code and digits only, e.g. `2547XXXXXXXX`.
 5. Start the workflow. Open its run log and use the displayed one-time pairing code in WhatsApp → Linked devices → Link with phone number instead.
 6. Approve the pairing and wait for the workflow to finish. The workflow sends the complete `SESSION_ID` in a Word document first, then attempts a separate plain-text WhatsApp message in the verified account’s self-chat.
-7. Open `BRITECH-MD-SESSION_ID.docx` in WhatsApp and copy the complete `BRITECH2:` value into the `SESSION_ID` setting on your bot host. If WhatsApp accepts the plain-text version too, you can long-press that message to copy it. If either message fails, check the workflow result and use the encrypted artifacts under the run’s **Artifacts** section.
+7. Open `BRITECH-MD-SESSION_ID.docx` in WhatsApp and copy the complete `BRITECH3:` value into the `SESSION_ID` setting on your bot host. If WhatsApp accepts the plain-text version too, you can long-press that message to copy it. If either message fails, check the workflow result and use the encrypted artifacts under the run’s **Artifacts** section.
 8. The `britech-session-id-encrypted` artifact contains the encrypted session string; `britech-session-encrypted` contains the encrypted auth folder. Decrypt these only on your own trusted device using the repository secret.
 
-Both artifacts are encrypted with AES-256-CBC and PBKDF2 before upload. The workflow does not print the session string in Actions logs or commit session credentials to Git. The `BRITECH2:` value contains the compressed full auth archive; the bot can import it when its auth folder is empty. Keep the pairing code and run access private. Do not share the run or its screenshots. GitHub Actions secrets are encrypted, but access to repository write permissions is still sensitive.
+Both artifacts are encrypted with AES-256-CBC and PBKDF2 before upload. The workflow does not print the session string in Actions logs or commit session credentials to Git. The `BRITECH3:` value contains the compacted full auth data; the bot can import it when its auth folder is empty. Keep the pairing code and run access private. Do not share the run or its screenshots. GitHub Actions secrets are encrypted, but access to repository write permissions is still sensitive.
 
 To decrypt on Linux/macOS with OpenSSL:
 ```bash
@@ -67,11 +67,11 @@ Enter the international WhatsApp number when prompted, then follow the pairing i
 
 ## KataBump deployment
 
-1. Sign in at [KataBump](https://katabump.com/) and create a Node.js server.
-2. Upload the repository ZIP from the [Code → Download ZIP](https://github.com/brianndichi34/BRITECH-MD/archive/refs/heads/main.zip) link, or clone the private repository using credentials configured securely in the panel. Extract it so `package.json`, `index.js`, and `.env.example` are at `/home/container` (the project root).
+1. Download a fresh project ZIP from [GitHub Code → Download ZIP](https://github.com/brianndichi34/BRITECH-MD/archive/refs/heads/main.zip). Sign in at KataBump and create a Node.js server.
+2. In KataBump, open **Files** and upload the project ZIP. Use the file manager’s **Extract/Unarchive** action. Make sure the extracted project contents (not an extra nested project folder) are in `/home/container`, with `package.json`, `index.js`, and `.env.example` together. If extraction creates a nested `BRITECH-MD-main` folder, move its contents into `/home/container` so the bot and `.env` use one project root.
 3. In the KataBump **Startup** tab, select Node.js 20 or newer and set **JS FILE** to `index.js`. The app starts with `npm start`; do not put the SESSION_ID into the JS FILE or ADDITIONAL PACKAGES boxes.
-4. Open **Files** in the KataBump panel and go to `/home/container`, the same folder containing `package.json`. Create a new file named exactly `.env` (include the leading dot). Open `.env.example` from the ZIP and copy its contents into `.env`. Paste your own generated session after the equals sign on the blank `SESSION_ID=` line, all on one line, with no quotes or spaces around `=`. Do not paste the value into `package.json`, the source code, or a public GitHub file.
-5. Save `.env`. If you use the ZIP upload, upload `.env` as a separate file after extraction; it is intentionally excluded from the repository ZIP because `.gitignore` keeps real secrets out of Git. Keep the full value on one line and never share the `.env` file.
+4. In **Files**, select **New File** (or the equivalent file-creation action), type `.env` exactly, and create it in `/home/container` beside `package.json`. Open `.env.example`, copy its content, then open `.env` and paste the template. On the blank `SESSION_ID=` line, paste your complete new `BRITECH3:` value immediately after `=`. Keep it all on one line with no quotes or spaces around `=`.
+5. Press **Save** in the file editor (or confirm the save prompt). Reopen `.env` to verify the line begins `SESSION_ID=BRITECH3:` and the full value is still present. Do not paste it into `package.json`, the source code, a public GitHub file, or chat. `.env` is intentionally excluded from Git, so each deployer creates this private file after extracting the ZIP.
 6. Ensure `/home/container/session/auth` is persistent. If that folder already contains credentials, back it up and clear it before first startup with `SESSION_ID`; the bot will not overwrite an existing auth session when importing the ID.
 7. Restart the server from the KataBump console. On startup, the bot imports the archive into `session/auth`; confirm logs show `Loaded SESSION_ID into auth folder` followed by `BRITECH MD connected`.
 
@@ -93,7 +93,7 @@ KataBump's web upload process requires a ZIP containing `package.json` and the e
 | `OWNER_EMAIL` | No | Contact shown by owner command |
 | `PREFIX` | No | `.` |
 | `TIMEZONE` | No | `Africa/Nairobi` |
-| `SESSION_ID` | Needed when importing a generated session | Complete `BRITECH2:` value; put it in `.env` at project root |
+| `SESSION_ID` | Needed when importing a generated session | Complete `BRITECH3:` value; put it in `.env` at project root |
 | `SESSION_DIR` | Hosted | `./session/auth`; use a persistent path |
 | `PAIRING_DASHBOARD_TOKEN` | Yes for web pairing | Long random secret protecting the pairing page API |
 | `PAIRING_PORT` / `PORT` | No | Web dashboard port; default `3000` |
