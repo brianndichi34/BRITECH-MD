@@ -10,7 +10,7 @@
     "session": "node generate-session.js",
     "session:ci": "node generate-session.js --ci",
     "session:send": "node send-session.js",
-    "check": "node --check index.js && node --check pairing-server.js && node --check generate-session.js && node --check send-session.js && node --check lib/handler.js && node --check lib/config.js",
+    "check": "node --check index.js && node --check pairing-server.js && node --check generate-session.js && node --check send-session.js && node --check lib/handler.js && node --check lib/config.js && node --check lib/pairing-session.js",
     "test": "npm run check && node --test tests/*.test.js"
   },
   "engines": {

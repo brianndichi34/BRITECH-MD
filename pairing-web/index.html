@@ -25,8 +25,9 @@ async function api(path,options={}){const r=await fetch(path,{...options,headers
 $('generate').onclick=async()=>{clearInterval(poller);$('generate').disabled=true;$('result').classList.add('hidden');$('code').textContent='—';$('status').textContent='Connecting securely to WhatsApp…';
 try{await api('/api/pair/start',{method:'POST',body:JSON.stringify({phone:$('phone').value})});$('status').textContent='Pairing started. Waiting for the code…';poller=setInterval(check,1800);await check()}catch(e){$('status').textContent=e.message;$('generate').disabled=false}};
 async function check(){try{const d=await api('/api/pair/status');if(d.status==='code_ready'&&d.code){$('pairedPhone').textContent='+'+(d.phone||$('phone').value).replace(/\D/g,'');$('code').textContent=d.code;$('result').classList.remove('hidden');$('status').textContent='Code ready. Enter it in WhatsApp on your phone.';$('generate').disabled=false}
-else if(d.status==='linked'){$('result').classList.add('hidden');$('status').textContent='WhatsApp linked successfully. BRITECH MD is starting.';clearInterval(poller);$('generate').disabled=false}
-else if(d.status==='error'){$('status').textContent=d.error||'Pairing failed. Try again.';clearInterval(poller);$('generate').disabled=false}
+else if(d.status==='sending_session'){$('status').textContent='WhatsApp linked. Sending your SESSION_ID as a separate copyable text message…'}
+else if(d.status==='linked'){$('result').classList.add('hidden');$('status').textContent='WhatsApp linked. SESSION_ID sent as a separate text message—long-press it in WhatsApp to copy. BRITECH MD is starting.';clearInterval(poller);$('generate').disabled=false}
+else if(d.status==='error'){$('status').textContent=d.error||'Pairing failed. Try again.';clearInterval(poller);$('generate').disabled=Boolean((d.error||'').startsWith('WhatsApp linked,'))}
 else $('status').textContent='Connecting to WhatsApp…'}catch(e){$('status').textContent=e.message;clearInterval(poller);$('generate').disabled=false}}
 $('copy').onclick=async()=>{try{await navigator.clipboard.writeText($('code').textContent);$('copy').textContent='Copied!';setTimeout(()=>$('copy').textContent='Copy Pair Code',1500)}catch{$('status').textContent='Copy was blocked by your browser. Select the code and copy it manually.'}};
 </script></body></html>

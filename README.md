@@ -27,9 +27,9 @@
 ## Keith MD–style pairing experience
 The pairing page is designed to make phone-number pairing easy on mobile: enter the international WhatsApp number, request a code, then view the paired number and pairing code in separate display areas. Use **Copy Pair Code** to copy only the one-time code, paste it into WhatsApp → Linked devices → Link with phone number instead, and approve the request. Never share the one-time code.
 
-For GitHub Actions session generation, the workflow sends a short instruction followed by the `SESSION_ID` as a separate plain-text WhatsApp message to the same number, only after checking that the entered number matches the account that completed pairing. Long-press the standalone message to copy it. Treat that value as a password; do not post it in issues, logs, screenshots, or chat. Dashboard-based pairing and GitHub Actions session generation are separate deployment paths; configure the dashboard with `PAIRING_DASHBOARD_TOKEN` and `SESSION_DIR` before exposing it.
+After dashboard pairing is confirmed, the dashboard sends a short instruction followed by the `SESSION_ID` as a separate plain-text WhatsApp message to the entered number. It verifies that the WhatsApp account that linked matches that number before delivery; the page reports when delivery is in progress, succeeded, or failed. The GitHub Actions session workflow uses the same standalone-message approach. Long-press the standalone message to copy it. Treat that value as a password; do not post it in issues, logs, screenshots, or chat. Configure the dashboard with `PAIRING_DASHBOARD_TOKEN` and `SESSION_DIR` before exposing it.
 
-The automated test suite checks the pairing display/copy controls, number-match guard, standalone text-message delivery code path, and documentation. It does not perform a real WhatsApp login or prove delivery to a phone; verify those only through a user-controlled live deployment.
+The automated test suite checks the pairing display/copy controls, BRITECH session-ID encoding, number-match guard, standalone text-message delivery code path, delivery status, and documentation. It does not perform a real WhatsApp login or prove delivery to a phone; verify those only through a user-controlled live deployment.
 
 ## Generate a WhatsApp session ID
 
@@ -110,7 +110,7 @@ Group moderation commands require the bot to be an administrator. Use only in gr
 
 ## Tests
 
-GitHub Actions runs syntax checks on pushes and pull requests. Locally:
+GitHub Actions runs syntax and pairing/session behavior checks on pushes and pull requests. Locally:
 ```bash
 npm install
 npm test

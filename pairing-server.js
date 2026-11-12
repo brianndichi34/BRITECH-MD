@@ -7,6 +7,7 @@ const baileys = require('@whiskeysockets/baileys');
 const makeWASocket = baileys.default;
 const { useMultiFileAuthState, fetchLatestBaileysVersion, Browsers, DisconnectReason } = baileys;
 const pino = require('pino');
+const { createSessionId, getVerifiedRecipient, createDeliveryMessages } = require('./lib/pairing-session');
 
 const PORT = Number(process.env.PORT || process.env.PAIRING_PORT || 3000);
 const HOST = '0.0.0.0';
@@ -90,16 +91,29 @@ async function startPairing(phone) {
       }
     }
     if (update.connection === 'open') {
-      pairStatus = 'linked';
+      pairStatus = 'sending_session';
       pairingCode = '';
       log.info('WhatsApp pairing confirmed.');
       setTimeout(async () => {
+        try {
+          const recipient = getVerifiedRecipient(number, state.creds.me?.id);
+          const sessionId = createSessionId(state.creds);
+          const [notice, sessionText] = createDeliveryMessages(sessionId);
+          await sock.sendMessage(recipient, { text: notice });
+          await sock.sendMessage(recipient, { text: sessionText });
+          pairStatus = 'linked';
+          log.info('SESSION_ID sent as a standalone copyable text message to the verified pairing number.');
+        } catch (error) {
+          pairStatus = 'error';
+          pairError = 'WhatsApp linked, but SESSION_ID delivery failed. Check the entered number and connection, then contact the bot owner before retrying.';
+          log.error({ message: error.message || 'Unknown session delivery error' }, 'Could not deliver SESSION_ID after pairing.');
+        }
         if (pairSocket === sock) {
           try { await sock.end(undefined); } catch {}
           pairSocket = null;
         }
         await launchBot().catch(error => log.error(error, 'Could not start bot after pairing'));
-      }, 1500);
+      }, 1200);
     }
     if (update.connection === 'close' && pairStatus !== 'linked') {
       const status = update.lastDisconnect?.error?.output?.statusCode;
