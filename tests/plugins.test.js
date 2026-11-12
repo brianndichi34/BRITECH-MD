@@ -49,11 +49,45 @@ test('static-image sticker conversion and sticker-to-PNG conversion work locally
   assert.equal((await sharp(image).metadata()).format, 'png');
 });
 
+test('sticker and toimg commands send the converted media through their actual handlers', async () => {
+  const source = await sharp({ create: { width: 80, height: 60, channels: 4, background: { r: 25, g: 100, b: 180, alpha: 1 } } }).png().toBuffer();
+  const sent = [];
+  const common = {
+    chat: '254700000001@s.whatsapp.net', config: { prefix: '.' },
+    sock: { async sendMessage(chat, payload, options) { sent.push({ chat, payload, options }); } },
+    async reply(text) { throw new Error(`unexpected reply: ${text}`); }
+  };
+  await media.handle('sticker', {
+    ...common, query: '',
+    msg: { key: { id: 'image-command' }, message: { imageMessage: { fileLength: String(source.length) } } },
+    async downloadMediaMessage() { return source; }
+  });
+  assert.equal((await sharp(sent[0].payload.sticker).metadata()).format, 'webp');
+
+  const sticker = sent[0].payload.sticker;
+  await media.handle('toimg', {
+    ...common, query: '',
+    msg: { key: { id: 'toimg-command' }, message: { extendedTextMessage: { contextInfo: {
+      stanzaId: 'quoted-sticker', participant: '254700000002@s.whatsapp.net',
+      quotedMessage: { stickerMessage: { fileLength: String(sticker.length) } }
+    } } } },
+    async downloadMediaMessage() { return sticker; }
+  });
+  assert.equal(sent[1].payload.mimetype, 'image/png');
+  assert.equal((await sharp(sent[1].payload.image).metadata()).format, 'png');
+});
+
 test('QR plugin returns a real PNG and enforces bounded input size', async () => {
   const qr = await media.createQrImage('https://github.com/brianndichi34/BRITECH-MD');
   assert.equal((await sharp(qr).metadata()).format, 'png');
   assert.ok(qr.length > 100);
   await assert.rejects(media.createQrImage('x'.repeat(1501)), /1,500 bytes/);
+  let payload;
+  await media.handle('qr', {
+    query: 'BRITECH MD', chat: '254700000001@s.whatsapp.net', msg: { key: { id: 'qr' } },
+    config: { prefix: '.' }, sock: { async sendMessage(_chat, value) { payload = value; } }, async reply() {}
+  });
+  assert.equal((await sharp(payload.image).metadata()).format, 'png');
 });
 
 test('native poll plugin parses options and sends Baileys poll content', async () => {
@@ -136,4 +170,7 @@ test('handler exposes plugin commands in menu/help while preserving existing dep
   assert.match(template, /^OWNER_NAME=BRIAN NDICHI$/m);
   assert.match(template, /^OWNER_NUMBER=254717276195$/m);
   assert.match(template, /^SESSION_ID=$/m);
+  assert.match(template, /^AUTO_VIEW_STATUS=true$/m);
+  assert.match(template, /^AUTO_LIKE_STATUS=true$/m);
+  assert.match(template, /^STATUS_LIKE_EMOJI=❤️$/m);
 });

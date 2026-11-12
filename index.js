@@ -4,7 +4,7 @@ const pino = require('pino');
 const fs = require('fs');
 const path = require('path');
 const config = require('./lib/config');
-const { handleMessage } = require('./lib/handler');
+const { dispatchUpsert } = require('./lib/message-dispatcher');
 const { hydrateSessionId } = require('./lib/session-id');
 
 let stopping = false;
@@ -59,8 +59,7 @@ async function startBot() {
     }
   });
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
-    if (type !== 'notify') return;
-    for (const msg of messages) await handleMessage(sock, msg).catch(err => logger.error(err));
+    await dispatchUpsert(sock, messages, type, config, logger);
   });
   sock.ev.on('group-participants.update', async update => {
     if (update.action !== 'add') return;

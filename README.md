@@ -31,7 +31,9 @@ After dashboard pairing is confirmed, the dashboard sends the `SESSION_ID` to th
 
 The command system also loads local modules from `plugins/`. These are independently implemented BRITECH features, not Keith-hosted API calls: image stickers, sticker-to-PNG conversion, QR images, native WhatsApp polls and reactions, AFK notices, group name/description updates, mute/unmute, and invite-link renewal. They need no extra API keys; sticker/PNG and QR processing runs locally. Video-to-sticker conversion and downloader commands that rely on third-party APIs are intentionally omitted. Existing commands remain available.
 
-The automated test suite checks the pairing display/copy controls, BRITECH session-ID encoding, number-match guard, phone-number DM routing, Word/text generation, chunking, acknowledgement handling, plugin loading, and local media/poll/group behavior. It does not perform a real WhatsApp login or prove inbox delivery; WhatsApp server acknowledgement means the server accepted the message, not that a phone displayed it. Verify inbox receipt on a user-controlled live deployment.
+Incoming WhatsApp statuses are automatically marked viewed and reacted to with `❤️` by default. This uses the linked WhatsApp account: the status owner can see the view and reaction. Set `AUTO_VIEW_STATUS=false` or `AUTO_LIKE_STATUS=false` in `.env` to turn either action off; `STATUS_LIKE_EMOJI` changes the reaction. Normal chat read receipts remain controlled separately by `AUTO_READ`.
+
+The automated test suite checks the pairing display/copy controls, BRITECH session-ID encoding, number-match guard, phone-number DM routing, Word/text generation, chunking, acknowledgement handling, plugin loading, local media/poll/group behavior, and status event routing. It does not perform a real WhatsApp login or prove live status receipts/reactions or inbox delivery. Verify these on a user-controlled live deployment.
 
 ## Generate a WhatsApp session ID
 
@@ -102,6 +104,9 @@ KataBump's web upload process requires a ZIP containing `package.json` and the e
 | `OPENAI_API_KEY` | No | Enables AI command; keep secret |
 | `OPENAI_MODEL` | No | `gpt-4o-mini` |
 | `AUTO_READ` | No | `false` |
+| `AUTO_VIEW_STATUS` | No | `true`; automatically mark incoming contact statuses viewed |
+| `AUTO_LIKE_STATUS` | No | `true`; send a status reaction once per status |
+| `STATUS_LIKE_EMOJI` | No | `❤️`; emoji to react with |
 | `LOG_LEVEL` | No | `info` |
 | `WELCOME_MESSAGE` | No | Optional group welcome message; supports `{user}` |
 
