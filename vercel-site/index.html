@@ -3,17 +3,43 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>BRITECH MD</title>
+<title>BRITECH MD — WhatsApp Assistant</title>
 <style>
-:root{color-scheme:dark}*{box-sizing:border-box}body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#0b1714;color:#eef8f2;display:grid;place-items:center;min-height:100vh;margin:0;padding:24px}.card{max-width:680px;padding:32px;border:1px solid #285b49;border-radius:20px;background:#10251e;box-shadow:0 18px 60px #0005}h1{margin:0;color:#6de0a4;font-size:clamp(2rem,8vw,3.5rem)}p,li{line-height:1.65}.muted{color:#b8d0c4}code{background:#07110e;padding:4px 8px;border-radius:6px}a{color:#6de0a4}
+:root{color-scheme:dark;--bg:#07130f;--panel:#10251e;--line:#285b49;--green:#6de0a4;--muted:#b8d0c4}
+*{box-sizing:border-box}body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:radial-gradient(circle at top,#173b2c,var(--bg) 55%);color:#eef8f2;display:grid;place-items:center;min-height:100vh;margin:0;padding:24px}
+main{width:min(900px,100%)}.hero,.panel{padding:clamp(22px,5vw,38px);border:1px solid var(--line);border-radius:22px;background:var(--panel);box-shadow:0 18px 60px #0005;margin-bottom:18px}
+h1{margin:0;color:var(--green);font-size:clamp(2.2rem,8vw,4rem)}h2{margin-top:0}p,li{line-height:1.65}.muted{color:var(--muted)}.buttons{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:20px}
+a.btn{display:block;text-decoration:none;text-align:center;padding:14px 16px;border-radius:12px;border:1px solid #438365;background:#173c2c;color:#eafff1;font-weight:700}a.btn:hover{background:#20543d}a.primary{background:#1c754b;border-color:#39b879}
+code{background:#07110e;padding:4px 8px;border-radius:6px;color:var(--green)}.small{font-size:.92rem}.footer{color:var(--muted);text-align:center;padding:10px}
 </style>
 </head>
-<body><main class="card">
+<body><main>
+<section class="hero">
 <h1>BRITECH MD</h1><p>WhatsApp Multi-Device Assistant</p>
-<p class="muted">An independently built Node.js and Baileys WhatsApp assistant by Brian Ndichi.</p>
-<h2>Features</h2><ul><li>General and utility commands</li><li>Group information and moderation tools</li><li>Optional AI replies through the OpenAI API</li><li>Linked-device pairing support</li></ul>
-<h2>Run the bot</h2><ol><li>Use Node.js 20 or newer.</li><li>Install dependencies with <code>npm install</code>.</li><li>Configure environment variables using <code>.env.example</code>.</li><li>Pair WhatsApp with <code>npm run session</code>.</li><li>Start with <code>npm start</code>.</li></ol>
-<p class="muted">Hosting note: this page is informational only. The WhatsApp client must run as an always-on worker with persistent session storage. Do not deploy the bot process as a Vercel Function.</p>
-<p><a href="https://github.com/brianndichi34/BRITECH-MD">Source code on GitHub</a></p>
-<p class="muted">Owner: Brian Ndichi · brianndichi340@gmail.com</p>
+<p class="muted">Built by Brian Ndichi · Node.js and Baileys</p>
+<p>Commands, utilities, group tools and optional AI assistance.</p>
+<div class="buttons">
+<a class="btn primary" href="https://github.com/brianndichi34/BRITECH-MD">Open GitHub Repository</a>
+<a class="btn" href="https://github.com/brianndichi34/BRITECH-MD/actions/workflows/session.yml">Generate WhatsApp Session</a>
+<a class="btn" href="https://github.com/brianndichi34/BRITECH-MD/archive/refs/heads/main.zip">Download ZIP</a>
+<a class="btn" href="https://github.com/brianndichi34/BRITECH-MD/fork">Fork Repository</a>
+</div>
+</section>
+<section class="panel">
+<h2>Deployment options</h2>
+<div class="buttons">
+<a class="btn primary" href="https://katabump.com/">Deploy on KataBump</a>
+<a class="btn" href="https://railway.com/">Deploy on Railway</a>
+<a class="btn" href="https://dashboard.render.com/">Deploy on Render</a>
+<a class="btn" href="https://dashboard.heroku.com/">Deploy on Heroku</a>
+<a class="btn" href="https://docs.docker.com/get-started/">Docker / VPS guide</a>
+</div>
+<p class="muted small">KataBump: upload the ZIP or clone the repository, configure Node.js 20+, environment variables and persistent session storage. Railway and Render may incur charges. Hosting providers' availability and pricing can change.</p>
+</section>
+<section class="panel">
+<h2>Quick start</h2>
+<ol><li>Download the repository ZIP or clone it.</li><li>Install dependencies using <code>npm install</code>.</li><li>Generate a WhatsApp session with <code>npm run session</code> or the private GitHub Actions workflow.</li><li>Store the entire auth folder on persistent storage.</li><li>Start the bot with <code>npm start</code>.</li></ol>
+<p class="muted small">The WhatsApp bot needs a continuously running worker and persistent authentication files. Do not deploy the bot process as a Vercel Function. This page is informational only.</p>
+</section>
+<p class="footer">BRITECH MD · Owner: Brian Ndichi</p>
 </main></body></html>
