@@ -1,0 +1,17 @@
+{
+  "name": "BRITECH MD",
+  "description": "BRITECH MD WhatsApp multi-device assistant",
+  "repository": "https://github.com/brianndichi34/BRITECH-MD",
+  "keywords": ["whatsapp", "baileys", "nodejs", "bot"],
+  "stack": "heroku-24",
+  "formation": { "worker": { "quantity": 1, "size": "basic" } },
+  "env": {
+    "BOT_NAME": { "description": "Bot display name", "value": "BRITECH MD" },
+    "OWNER_NAME": { "description": "Bot owner display name", "value": "BRIAN NDICHI" },
+    "OWNER_NUMBER": { "description": "Owner WhatsApp number with country code, digits only", "required": true },
+    "PREFIX": { "description": "Command prefix", "value": "." },
+    "TIMEZONE": { "description": "Time zone", "value": "Africa/Nairobi" },
+    "SESSION_DIR": { "description": "Persistent session directory", "value": "/app/session/auth" },
+    "OPENAI_API_KEY": { "description": "Optional OpenAI API key", "required": false }
+  }
+}
