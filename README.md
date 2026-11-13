@@ -108,7 +108,7 @@ KataBump's web upload process requires a ZIP containing `package.json` and the e
 | `AUTO_LIKE_STATUS` | No | `true`; send a status reaction once per status |
 | `STATUS_LIKE_EMOJI` | No | `❤️`; emoji to react with |
 | `LOG_LEVEL` | No | `info` |
-| `WELCOME_MESSAGE` | No | Optional group welcome message; supports `{user}` |
+| `WELCOME_MESSAGE` | No | Group-join welcome; defaults in `.env.example` to `WELCOME TO BRITECH BOT🔥💯` / `FOUNDED BY BRIAN N.🌺`; supports `{user}` |
 
 ## Commands
 
