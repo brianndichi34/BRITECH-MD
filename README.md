@@ -12,6 +12,10 @@
   <a href="https://github.com/brianndichi34/BRITECH-MD/actions/workflows/ci.yml"><img alt="Tests" src="https://img.shields.io/badge/TESTS-GITHUB%20ACTIONS-1f6feb?style=for-the-badge"></a>
 </p>
 
+<p align="center">
+  <img src="assets/britech-md-avatar.png" alt="BRITECH MD — by Brian" width="220">
+</p>
+
 ## Deployment options
 
 | Platform | Method | Notes |
