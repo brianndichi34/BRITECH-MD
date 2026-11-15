@@ -73,7 +73,7 @@ Enter the international WhatsApp number when prompted, then follow the pairing i
 
 1. Download a fresh project ZIP from [GitHub Code → Download ZIP](https://github.com/brianndichi34/BRITECH-MD/archive/refs/heads/main.zip). Sign in at KataBump and create a Node.js server.
 2. In KataBump, open **Files** and upload the project ZIP. Use the file manager’s **Extract/Unarchive** action. Make sure the extracted project contents (not an extra nested project folder) are in `/home/container`, with `package.json`, `index.js`, and the safe starter `.env` together. If extraction creates a nested `BRITECH-MD-main` folder, move its contents into `/home/container` so the bot and `.env` use one project root.
-3. In the KataBump **Startup** tab, select Node.js 20.9 or newer and set **JS FILE** to `index.js`. The app starts with `npm start`; dependencies are declared in `package.json` and pinned by `package-lock.json`. Do not put the SESSION_ID into the JS FILE or ADDITIONAL PACKAGES boxes.
+3. In the KataBump **Startup** tab, select the Node.js **24.x** runtime and set **JS FILE** to `index.js`. The app starts with `npm start`; dependencies are declared in `package.json` and pinned by `package-lock.json`. Do not put the SESSION_ID into the JS FILE or ADDITIONAL PACKAGES boxes.
 4. The ZIP now includes a safe `.env` starter beside `package.json`. Open it in KataBump **Files**; if it is missing, select **New File**, name it `.env`, and copy the template from `.env.example`. Set your complete `BRITECH3:` value after `SESSION_ID=` on one line, without spaces around `=`. The starter already enables `AUTO_VIEW_STATUS=true` and `AUTO_LIKE_STATUS=true`.
 5. Press **Save** in the file editor (or confirm the save prompt), then reopen `.env` to confirm it saved and the line begins `SESSION_ID=BRITECH3:`. The committed `.env` is only a public starter: its `SESSION_ID`, API key, and dashboard token are blank. Never commit or upload a populated `.env`, session ID, auth folder, or real token to GitHub; fill private values only in the KataBump copy. Keep the session ID on one line with no quotes or spaces around `=`.
 6. Ensure `/home/container/session/auth` is persistent. If that folder already contains credentials, back it up and clear it before first startup with `SESSION_ID`; the bot will not overwrite an existing auth session when importing the ID.
@@ -83,7 +83,7 @@ KataBump's web upload process requires a ZIP containing `package.json` and the e
 
 ## Requirements
 
-- Node.js 20.9+
+- Node.js 24.x (GitHub Actions, Docker, and KataBump use the same major version)
 - WhatsApp account with linked-device access
 - Persistent storage for authentication files
 
