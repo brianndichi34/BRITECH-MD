@@ -33,7 +33,9 @@ The command system also loads local modules from `plugins/`. These are independe
 
 Incoming WhatsApp statuses are automatically marked viewed and reacted to with `❤️` by default. This uses the linked WhatsApp account: the status owner can see the view and reaction. Set `AUTO_VIEW_STATUS=false` or `AUTO_LIKE_STATUS=false` in `.env` to turn either action off; `STATUS_LIKE_EMOJI` changes the reaction. Normal chat read receipts remain controlled separately by `AUTO_READ`.
 
-The automated test suite checks the pairing display/copy controls, BRITECH session-ID encoding, number-match guard, phone-number DM routing, Word/text generation, chunking, acknowledgement handling, plugin loading, local media/poll/group behavior, and status event routing. It does not perform a real WhatsApp login or prove live status receipts/reactions or inbox delivery. Verify these on a user-controlled live deployment.
+Anti-delete is enabled by default. When Baileys receives a message-revocation event, BRITECH MD forwards the cached original message from a group or private chat to the `OWNER_NUMBER` WhatsApp DM, with the source chat and sender noted. It keeps up to 1,000 messages in memory for 48 hours; only messages received while the bot is online can be recovered, and the cache clears on restart. Set `AUTO_ANTI_DELETE=false` to disable this feature.
+
+The automated test suite checks the pairing display/copy controls, BRITECH session-ID encoding, number-match guard, phone-number DM routing, Word/text generation, chunking, acknowledgement handling, plugin loading, local media/poll/group behavior, status event routing, and anti-delete caching/forwarding. It does not perform a real WhatsApp login or prove live status receipts/reactions, anti-delete delivery, or inbox delivery. Verify these on a user-controlled live deployment.
 
 ## Generate a WhatsApp session ID
 
@@ -106,6 +108,7 @@ KataBump's web upload process requires a ZIP containing `package.json` and the e
 | `AUTO_READ` | No | `false` |
 | `AUTO_VIEW_STATUS` | No | `true`; automatically mark incoming contact statuses viewed |
 | `AUTO_LIKE_STATUS` | No | `true`; send a status reaction once per status |
+| `AUTO_ANTI_DELETE` | No | `true`; forward cached revoked messages from groups and chats to the owner DM |
 | `STATUS_LIKE_EMOJI` | No | `❤️`; emoji to react with |
 | `LOG_LEVEL` | No | `info` |
 | `WELCOME_MESSAGE` | No | Group-join welcome; defaults in `.env.example` to `WELCOME TO BRITECH BOT🔥💯` / `FOUNDED BY BRIAN N.🌺`; supports `{user}` |

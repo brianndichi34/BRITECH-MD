@@ -6,10 +6,12 @@ const path = require('path');
 const config = require('./lib/config');
 const { dispatchUpsert } = require('./lib/message-dispatcher');
 const { hydrateSessionId } = require('./lib/session-id');
+const { createAntiDelete } = require('./lib/anti-delete');
 
 let stopping = false;
 let reconnectTimer;
 const logger = pino({ level: config.logLevel });
+const antiDelete = createAntiDelete();
 
 /** Import SESSION_ID only when no existing auth session is present. */
 async function hydrateSessionFromEnv() {
@@ -59,7 +61,13 @@ async function startBot() {
     }
   });
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
+    antiDelete.remember(sock, messages, config);
     await dispatchUpsert(sock, messages, type, config, logger);
+  });
+  sock.ev.on('messages.update', updates => {
+    antiDelete.handleUpdates(sock, updates, config, logger).catch(error => {
+      logger.warn({ err: error?.message || error }, 'Anti-delete message handling failed.');
+    });
   });
   sock.ev.on('group-participants.update', async update => {
     if (update.action !== 'add') return;
