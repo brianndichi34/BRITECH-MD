@@ -1,15 +1,16 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const config = require('../lib/config');
-const { STATUS_JID, handleStatusMessage } = require('../lib/status-actions');
+const { STATUS_JID, selectStatusEmoji, handleStatusMessage } = require('../lib/status-actions');
 const { dispatchUpsert } = require('../lib/message-dispatcher');
 
 const silentLogger = { warn() {}, error() {} };
 
-test('status viewing and liking are enabled by default with heart reaction', () => {
+test('status viewing and liking are enabled by default with configured emoji choices', () => {
   assert.equal(config.autoViewStatus, true);
   assert.equal(config.autoLikeStatus, true);
   assert.equal(config.statusLikeEmoji, '❤️');
+  assert.deepEqual(config.statusLikeEmojis, ['❤️', '🥰', '🌺', '💕', '💥', '🙏', '🔥']);
 });
 
 test('incoming contact status is marked read and reacted to with Baileys statusJidList routing', async () => {
@@ -21,22 +22,33 @@ test('incoming contact status is marked read and reacted to with Baileys statusJ
     async readMessages(keys) { reads.push(keys); },
     async sendMessage(...args) { sends.push(args); }
   };
-  const result = await handleStatusMessage(sock, { key, message: { conversation: 'status body' } }, {
-    autoViewStatus: true, autoLikeStatus: true, statusLikeEmoji: '❤️'
-  }, silentLogger);
+  const settings = { autoViewStatus: true, autoLikeStatus: true, statusLikeEmojis: config.statusLikeEmojis };
+  const result = await handleStatusMessage(sock, { key, message: { conversation: 'status body' } }, settings, silentLogger);
   assert.deepEqual(reads, [[key]]);
   assert.equal(sends.length, 1);
   assert.equal(sends[0][0], STATUS_JID);
-  assert.deepEqual(sends[0][1].react, { text: '❤️', key });
+  const reaction = sends[0][1].react.text;
+  assert.ok(config.statusLikeEmojis.includes(reaction));
+  assert.deepEqual(sends[0][1].react, { text: reaction, key });
   assert.deepEqual(sends[0][2].statusJidList, [key.participant, sock.user.id]);
   assert.deepEqual({ handled: result.handled, viewed: result.viewed, liked: result.liked }, { handled: true, viewed: true, liked: true });
 
-  const duplicate = await handleStatusMessage(sock, { key }, {
-    autoViewStatus: true, autoLikeStatus: true, statusLikeEmoji: '❤️'
-  }, silentLogger);
+  const duplicate = await handleStatusMessage(sock, { key }, settings, silentLogger);
   assert.equal(duplicate.liked, true);
   assert.equal(sends.length, 1, 'duplicate upserts should not send repeated reactions');
   assert.equal(reads.length, 2, 're-marking a status read is safe and idempotent');
+});
+
+test('status emoji choice is deterministic per status and supports legacy single-emoji config', () => {
+  const key = { participant: '254700000011@s.whatsapp.net', id: 'emoji-choice-test' };
+  const choices = ['❤️', '🥰', '🌺', '💕', '💥', '🙏', '🔥'];
+  const selected = selectStatusEmoji(key, { statusLikeEmojis: choices });
+  assert.ok(choices.includes(selected));
+  assert.equal(selectStatusEmoji(key, { statusLikeEmojis: choices }), selected);
+  const represented = new Set(Array.from({ length: 250 }, (_, index) => selectStatusEmoji({ ...key, id: `emoji-choice-${index}` }, { statusLikeEmojis: choices })));
+  assert.deepEqual(represented, new Set(choices), 'status IDs should rotate through all configured emoji choices');
+  assert.equal(selectStatusEmoji(key, { statusLikeEmoji: '🌺' }), '🌺');
+  assert.equal(selectStatusEmoji(key, { statusLikeEmojis: [] }), '❤️');
 });
 
 test('auto-view and auto-like can be disabled independently; self and non-status messages are ignored', async () => {
@@ -56,20 +68,22 @@ test('auto-view and auto-like can be disabled independently; self and non-status
   assert.equal(sendCount, 0);
 });
 
-test('failed auto-reaction can be retried on a later status upsert', async () => {
+test('failed auto-reaction can be retried with the same selected emoji on a later status upsert', async () => {
   let sendCount = 0;
+  const sentEmojis = [];
   const sock = {
     user: { id: '254700000099@s.whatsapp.net' },
     async readMessages() {},
-    async sendMessage() { sendCount++; if (sendCount === 1) throw new Error('temporary send error'); }
+    async sendMessage(_jid, content) { sentEmojis.push(content.react.text); sendCount++; if (sendCount === 1) throw new Error('temporary send error'); }
   };
   const key = { remoteJid: STATUS_JID, id: 'britech-status-test-retry', participant: '254700000014@s.whatsapp.net' };
-  const settings = { autoViewStatus: false, autoLikeStatus: true, statusLikeEmoji: '❤️' };
+  const settings = { autoViewStatus: false, autoLikeStatus: true, statusLikeEmojis: config.statusLikeEmojis };
   const first = await handleStatusMessage(sock, { key }, settings, silentLogger);
   assert.equal(first.liked, false);
   const second = await handleStatusMessage(sock, { key }, settings, silentLogger);
   assert.equal(second.liked, true);
   assert.equal(sendCount, 2);
+  assert.equal(sentEmojis[0], sentEmojis[1]);
 });
 
 test('upsert dispatcher routes only live status notifications to status actions', async () => {

@@ -31,7 +31,7 @@ After dashboard pairing is confirmed, the dashboard sends the `SESSION_ID` to th
 
 The command system also loads local modules from `plugins/`. The `.menu` command now opens with a generated BRITECH MD avatar and a redesigned, phone-readable layout using consistent color-coded emoji accents, bold section titles, compact command rows, and clear separators. `.settings` and `.doctor` use the same visual style. On first connection, the generated avatar is applied to the bot's WhatsApp profile by default; owners can use `.setmenuprofile https://...` with a direct public HTTPS image URL to update both the WhatsApp account photo and the image used by the menu. Set `AUTO_SET_BOT_PROFILE=false` to stop automatic profile updates. Image downloads are size-limited and local/private URLs are rejected. Other local features include stickers, QR images, native polls/reactions, AFK notices, group name/description changes, mute/unmute, and invite-link renewal.
 
-Incoming WhatsApp statuses are automatically marked viewed and reacted to with `❤️` by default. This uses the linked WhatsApp account: the status owner can see the view and reaction. Set `AUTO_VIEW_STATUS=false` or `AUTO_LIKE_STATUS=false` in `.env` to turn either action off; `STATUS_LIKE_EMOJI` changes the reaction. Normal chat read receipts remain controlled separately by `AUTO_READ`.
+Incoming WhatsApp statuses are automatically marked viewed and reacted to by default. The bot uses the linked WhatsApp account, so the status owner can see its view and reaction. Reactions are selected consistently per status from `❤️, 🥰, 🌺, 💕, 💥, 🙏, 🔥`; retries for a status use the same emoji and duplicate status events do not send duplicate reactions. Set `AUTO_VIEW_STATUS=false` or `AUTO_LIKE_STATUS=false` in `.env` to turn viewing or reacting off independently. Set `STATUS_LIKE_EMOJIS` to a comma-separated list to customize the choices, or use the legacy `STATUS_LIKE_EMOJI` for one fixed emoji. Normal chat read receipts remain controlled separately by `AUTO_READ`.
 
 Anti-delete is enabled by default. When Baileys receives a message-revocation event, BRITECH MD forwards the cached original message from a group or private chat directly into the linked account's own WhatsApp DM (self-chat), with the source chat and sender noted. It falls back to `OWNER_NUMBER` only if the linked account identity is unavailable. It keeps up to 1,000 messages in memory for 48 hours; only messages received while the bot is online can be recovered, and the cache clears on restart. Set `AUTO_ANTI_DELETE=false` to disable this feature.
 
@@ -113,6 +113,7 @@ KataBump's web upload process requires a ZIP containing `package.json` and the e
 | `AUTO_READ` | No | `false` |
 | `AUTO_VIEW_STATUS` | No | `true`; automatically mark incoming contact statuses viewed |
 | `AUTO_LIKE_STATUS` | No | `true`; send a status reaction once per status |
+| `STATUS_LIKE_EMOJIS` | No | Comma-separated status reaction options; defaults to `❤️,🥰,🌺,💕,💥,🙏,🔥` |
 | `AUTO_ANTI_DELETE` | No | `true`; forward cached revoked messages from groups and chats to the owner DM |
 | `AUTO_SET_BOT_PROFILE` | No | `true`; apply the generated or custom avatar to the linked WhatsApp account on startup |
 | `STATUS_LIKE_EMOJI` | No | `❤️`; emoji to react with |
