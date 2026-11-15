@@ -174,3 +174,19 @@ test('handler exposes plugin commands in menu/help while preserving existing dep
   assert.match(template, /^AUTO_LIKE_STATUS=true$/m);
   assert.match(template, /^STATUS_LIKE_EMOJI=❤️$/m);
 });
+
+test('handler processes prefixed self-chat commands but ignores ordinary outgoing messages', async () => {
+  const sent = [];
+  const sock = { async sendMessage(chat, payload) { sent.push({ chat, payload }); } };
+  const chat = '230451234996366@lid';
+  const msg = text => ({ key: { remoteJid: chat, fromMe: true }, message: { conversation: text } });
+
+  await handleMessage(sock, msg('.menu'));
+  await handleMessage(sock, msg('.ping'));
+  await handleMessage(sock, msg('ordinary outgoing message'));
+
+  assert.equal(sent.length, 2);
+  assert.match(sent[0].payload.text, /BRITECH MD/);
+  assert.match(sent[1].payload.text, /Pong!/);
+  assert.ok(sent.every(item => item.chat === chat));
+});
