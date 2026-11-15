@@ -1,33 +1,256 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>BRITECH MD — Pair WhatsApp</title>
-<style>
-:root{color-scheme:dark;--bg:#07130f;--panel:#10251e;--line:#285b49;--green:#6de0a4;--muted:#b8d0c4}
-*{box-sizing:border-box}body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:radial-gradient(circle at top,#173b2c,var(--bg) 58%);color:#eef8f2;display:grid;place-items:center;min-height:100vh;margin:0;padding:20px}
-main{width:min(560px,100%)}section{padding:clamp(22px,5vw,34px);border:1px solid var(--line);border-radius:22px;background:var(--panel);box-shadow:0 18px 60px #0006}
-h1{margin:0;color:var(--green);font-size:2rem}p{line-height:1.6}.muted{color:var(--muted);font-size:.92rem}label{display:block;margin:18px 0 8px;font-weight:650}input{width:100%;padding:14px;border:1px solid var(--line);border-radius:11px;background:#07110e;color:white;font-size:1rem}
-button{border:0;border-radius:11px;padding:14px 16px;background:#1c754b;color:white;font-weight:750;font-size:1rem;cursor:pointer;width:100%;margin-top:14px}button:disabled{opacity:.55;cursor:wait}.secondary{background:#173c2c;border:1px solid #438365}
-.display{margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:12px;background:#07110e}.display strong{display:block;margin-top:5px;color:var(--green);font-size:1.08rem;overflow-wrap:anywhere}.code{margin-top:18px;padding:20px;border:1px dashed #438365;border-radius:14px;text-align:center;background:#07110e}.code strong{display:block;color:var(--green);font-size:clamp(1.7rem,8vw,2.5rem);letter-spacing:.14em;word-break:break-word;min-height:1.4em}.hidden{display:none}.status{margin-top:16px;padding:12px;border-radius:10px;background:#07110e;color:var(--muted);min-height:48px}.warning{font-size:.82rem;color:#e6c98b}.foot{text-align:center;color:var(--muted);font-size:.82rem;margin:16px}
-</style></head><body><main><section>
-<h1>BRITECH MD</h1><p>WhatsApp Pairing Centre</p>
-<p class="muted">Enter your WhatsApp number with country code. Example: 2547XXXXXXXX. Then request a separate pairing code.</p>
-<label for="token">Private dashboard access token</label><input id="token" type="password" autocomplete="current-password" placeholder="Enter KataBump pairing token">
-<label for="phone">WhatsApp number</label><input id="phone" inputmode="numeric" autocomplete="tel" placeholder="2547XXXXXXXX">
-<button id="generate">Generate Pair Code</button>
-<div id="result" class="hidden"><div class="display"><span class="muted">PHONE NUMBER BEING PAIRED</span><strong id="pairedPhone">—</strong></div><div class="code"><span class="muted">YOUR WHATSAPP PAIRING CODE</span><strong id="code">—</strong><button id="copy" class="secondary" type="button">Copy Pair Code</button></div></div>
-<div id="status" class="status" role="status" aria-live="polite">Waiting for your request.</div>
-<p class="warning">Never share this code. Enter it only in WhatsApp → Linked devices → Link with phone number instead. This page will never write the code to server logs.</p>
-</section><p class="foot">BRITECH MD · Private pairing interface</p></main>
-<script>
-const $=id=>document.getElementById(id);let poller=null;
-function token(){return $('token').value.trim()}
-async function api(path,options={}){const r=await fetch(path,{...options,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token(),...(options.headers||{})}});const d=await r.json();if(!r.ok)throw new Error(d.error||'Request failed');return d}
-$('generate').onclick=async()=>{clearInterval(poller);$('generate').disabled=true;$('result').classList.add('hidden');$('code').textContent='—';$('status').textContent='Connecting securely to WhatsApp…';
-try{await api('/api/pair/start',{method:'POST',body:JSON.stringify({phone:$('phone').value})});$('status').textContent='Pairing started. Waiting for the code…';poller=setInterval(check,1800);await check()}catch(e){$('status').textContent=e.message;$('generate').disabled=false}};
-async function check(){try{const d=await api('/api/pair/status');if(d.status==='code_ready'&&d.code){$('pairedPhone').textContent='+'+(d.phone||$('phone').value).replace(/\D/g,'');$('code').textContent=d.code;$('result').classList.remove('hidden');$('status').textContent='Code ready. Enter it in WhatsApp on your phone.';$('generate').disabled=false}
-else if(d.status==='sending_session'){$('status').textContent='WhatsApp linked. Sending your SESSION_ID to the entered number as a Word document and copyable text…'}
-else if(d.status==='linked'){$('result').classList.add('hidden');const formats=[];if(d.documentSent)formats.push('Word document');if(d.textSent)formats.push('copyable text');$('status').textContent='WhatsApp linked. WhatsApp acknowledged '+(formats.length?formats.join(' and '):'the available SESSION_ID delivery')+'. Check the DM for the entered number. BRITECH MD is starting.';clearInterval(poller);$('generate').disabled=false}
-else if(d.status==='error'){$('status').textContent=d.error||'Pairing failed. Try again.';clearInterval(poller);$('generate').disabled=Boolean((d.error||'').startsWith('WhatsApp linked,'))}
-else $('status').textContent='Connecting to WhatsApp…'}catch(e){$('status').textContent=e.message;clearInterval(poller);$('generate').disabled=false}}
-$('copy').onclick=async()=>{try{await navigator.clipboard.writeText($('code').textContent);$('copy').textContent='Copied!';setTimeout(()=>$('copy').textContent='Copy Pair Code',1500)}catch{$('status').textContent='Copy was blocked by your browser. Select the code and copy it manually.'}};
-</script></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#070d27">
+  <meta name="description" content="Securely pair your WhatsApp device with BRITECH MD using a one-time code.">
+  <title>BRITECH MD Pairing</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #070d27;
+      --surface: rgba(13, 31, 79, .92);
+      --surface-raised: rgba(18, 47, 112, .9);
+      --line: rgba(86, 153, 255, .32);
+      --blue: #168cff;
+      --blue-bright: #31b5ff;
+      --cyan: #79e7ff;
+      --text: #f3f7ff;
+      --muted: #a9b8d7;
+      --good: #64e5c3;
+      --shadow: 0 24px 75px rgba(0, 0, 0, .38);
+    }
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 28px 18px 22px;
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(ellipse at 78% 6%, rgba(27, 112, 255, .34), transparent 32rem),
+        radial-gradient(ellipse at 18% 78%, rgba(7, 107, 220, .22), transparent 30rem),
+        radial-gradient(rgba(175, 208, 255, .2) .8px, transparent .9px) 0 0 / 31px 31px,
+        linear-gradient(145deg, #11194b 0%, var(--bg) 54%, #071b48 100%);
+    }
+    .page { width: min(100%, 1040px); margin: 0 auto; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 0 auto 18px; }
+    .brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
+    .brand-mark { display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid rgba(114, 204, 255, .48); border-radius: 14px; color: #fff; background: linear-gradient(145deg, #168cff, #5a5bff); box-shadow: 0 0 24px rgba(29, 143, 255, .33); font-size: 1.12rem; font-weight: 900; }
+    .brand-name { font-size: .98rem; font-weight: 800; letter-spacing: .04em; }
+    .brand-caption { margin-top: 2px; color: var(--muted); font-size: .76rem; }
+    .secure-badge { display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto; padding: 8px 11px; border: 1px solid rgba(100, 229, 195, .24); border-radius: 999px; color: #b9f6e7; background: rgba(27, 115, 117, .18); font-size: .75rem; font-weight: 750; letter-spacing: .03em; }
+    .secure-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--good); box-shadow: 0 0 12px var(--good); }
+    .hero, .card { border: 1px solid var(--line); border-radius: 23px; background: linear-gradient(135deg, rgba(17, 43, 106, .96), rgba(9, 24, 68, .94)); box-shadow: var(--shadow); }
+    .hero { position: relative; overflow: hidden; display: flex; align-items: center; justify-content: space-between; gap: 26px; min-height: 168px; margin-bottom: 17px; padding: clamp(24px, 5vw, 40px); }
+    .hero::after { position: absolute; top: -74px; right: 8%; width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(circle, rgba(64, 166, 255, .46), rgba(36, 90, 215, .13) 37%, transparent 70%); content: ""; pointer-events: none; }
+    .hero-copy { position: relative; z-index: 1; max-width: 640px; }
+    .eyebrow { margin: 0 0 9px; color: var(--cyan); font-size: .76rem; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(1.8rem, 5vw, 2.65rem); line-height: 1.1; letter-spacing: -.035em; }
+    .hero p:last-child { margin: 11px 0 0; color: var(--muted); font-size: .97rem; line-height: 1.55; }
+    .hero-orbit { position: relative; z-index: 1; display: grid; width: 96px; height: 96px; flex: 0 0 auto; place-items: center; border: 1px solid rgba(85, 184, 255, .48); border-radius: 50%; color: #a8eaff; background: radial-gradient(circle, rgba(50, 143, 255, .22), rgba(13, 40, 111, .18) 65%); box-shadow: 0 0 32px rgba(31, 129, 255, .24), inset 0 0 24px rgba(49, 181, 255, .12); font-size: 2.2rem; }
+    .hero-orbit::before, .hero-orbit::after { position: absolute; width: 148%; height: 53%; border: 1.5px solid rgba(105, 255, 130, .74); border-radius: 50%; box-shadow: 0 0 13px rgba(62, 255, 117, .38), inset 0 0 8px rgba(62, 255, 117, .13); content: ""; transform: rotate(-28deg); animation: orbit-glow 8s ease-in-out infinite; pointer-events: none; }
+    .hero-orbit::after { width: 170%; height: 69%; border-color: rgba(63, 191, 255, .56); box-shadow: 0 0 15px rgba(49, 153, 255, .28); animation-delay: -4s; animation-duration: 11s; }
+    @keyframes orbit-glow { 0%, 100% { transform: rotate(-28deg) scale(.96); filter: hue-rotate(0deg); opacity: .72; } 50% { transform: rotate(28deg) scale(1.04); filter: hue-rotate(22deg); opacity: 1; } }
+    .content { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(290px, .88fr); gap: 16px; align-items: stretch; }
+    .card { padding: clamp(20px, 4vw, 30px); }
+    .card-heading { margin: 0; font-size: 1.13rem; font-weight: 800; }
+    .card-subtitle { margin: 5px 0 18px; color: var(--muted); font-size: .86rem; line-height: 1.45; }
+    .mode-chip { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 20px; padding: 9px 12px; border: 1px solid rgba(83, 164, 255, .46); border-radius: 11px; color: #eaf5ff; background: rgba(19, 101, 219, .2); font-size: .82rem; font-weight: 800; }
+    .mode-chip small { color: var(--cyan); font-size: .7rem; font-weight: 700; }
+    label { display: block; margin: 16px 0 7px; color: #dce7ff; font-size: .84rem; font-weight: 750; }
+    input { display: block; width: 100%; min-height: 48px; padding: 12px 14px; border: 1px solid rgba(126, 164, 226, .3); border-radius: 12px; outline: none; color: var(--text); background: rgba(4, 12, 37, .65); font: inherit; font-size: .97rem; transition: border-color .15s ease, box-shadow .15s ease; }
+    input::placeholder { color: #7383a8; }
+    input:focus { border-color: var(--blue-bright); box-shadow: 0 0 0 3px rgba(49, 181, 255, .15); }
+    .field-hint { margin: 7px 0 0; color: var(--muted); font-size: .77rem; line-height: 1.45; }
+    button { width: 100%; min-height: 48px; margin-top: 17px; padding: 12px 16px; border: 1px solid rgba(93, 201, 255, .6); border-radius: 12px; color: white; background: linear-gradient(100deg, #1276ef, #2560eb 55%, #4c5df3); box-shadow: 0 8px 24px rgba(22, 118, 239, .22); font: inherit; font-size: .95rem; font-weight: 850; cursor: pointer; transition: filter .15s ease, transform .15s ease; }
+    button:hover:not(:disabled) { filter: brightness(1.12); transform: translateY(-1px); }
+    button:focus-visible { outline: 3px solid var(--cyan); outline-offset: 3px; }
+    button:disabled { opacity: .6; cursor: wait; }
+    .result { margin-top: 17px; }
+    .hidden { display: none !important; }
+    .display { padding: 13px 15px; border: 1px solid rgba(91, 154, 234, .3); border-radius: 12px; background: rgba(4, 12, 37, .5); }
+    .display + .display { margin-top: 11px; }
+    .display-label { display: block; color: #9eb4dc; font-size: .72rem; font-weight: 800; letter-spacing: .08em; }
+    .display-value { display: block; margin-top: 6px; overflow-wrap: anywhere; color: var(--cyan); font-size: 1.05rem; font-weight: 850; }
+    .code-box { margin-top: 12px; padding: 17px 15px 15px; border: 1px solid rgba(48, 159, 255, .58); border-radius: 15px; text-align: center; background: radial-gradient(ellipse at top, rgba(25, 119, 233, .2), rgba(4, 12, 37, .68) 72%); }
+    .code-box .display-label { color: #bbd8ff; }
+    .code-value { display: block; min-height: 1.35em; margin: 8px 0 4px; color: white; font-size: clamp(1.8rem, 8vw, 2.6rem); font-weight: 900; letter-spacing: .16em; line-height: 1.2; overflow-wrap: anywhere; text-shadow: 0 0 20px rgba(68, 180, 255, .55); }
+    .copy-button { width: auto; min-width: 148px; min-height: 40px; margin-top: 7px; padding: 9px 15px; border-color: rgba(91, 175, 255, .4); background: rgba(18, 67, 150, .58); box-shadow: none; font-size: .84rem; }
+    .status { display: flex; align-items: flex-start; gap: 10px; min-height: 48px; margin-top: 16px; padding: 12px 13px; border: 1px solid rgba(91, 154, 234, .22); border-radius: 12px; color: #ccdaef; background: rgba(4, 12, 37, .5); font-size: .84rem; line-height: 1.5; }
+    .status-mark { width: 8px; height: 8px; flex: 0 0 auto; margin-top: 5px; border-radius: 50%; background: #57b9ff; box-shadow: 0 0 10px #258cff; }
+    .warning { margin: 13px 0 0; color: #adbad4; font-size: .76rem; line-height: 1.5; }
+    .steps { display: grid; gap: 16px; margin: 19px 0 0; padding: 0; list-style: none; }
+    .step { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 11px; align-items: start; color: #dce7fa; font-size: .87rem; line-height: 1.5; }
+    .step-number { display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid rgba(105, 196, 255, .45); border-radius: 50%; color: white; background: linear-gradient(145deg, #168cff, #4665ec); font-size: .77rem; font-weight: 900; box-shadow: 0 0 16px rgba(31, 129, 255, .22); }
+    .step strong { color: white; }
+    .delivery-note { margin-top: 22px; padding: 13px 14px; border: 1px solid rgba(100, 229, 195, .25); border-radius: 12px; color: #c4e9df; background: rgba(17, 103, 100, .14); font-size: .8rem; line-height: 1.5; }
+    .delivery-note strong { color: #a8f1dc; }
+    .footer { padding: 18px 8px 4px; color: #8595b5; text-align: center; font-size: .76rem; }
+    @media (max-width: 720px) {
+      body { padding: 17px 14px 20px; }
+      .hero { min-height: 146px; }
+      .hero-orbit { width: 72px; height: 72px; font-size: 1.8rem; }
+      .content { grid-template-columns: 1fr; }
+      .steps { gap: 14px; }
+    }
+    @media (max-width: 420px) {
+      .secure-badge { padding: 7px 9px; font-size: .68rem; }
+      .brand-mark { width: 38px; height: 38px; }
+      .brand-name { font-size: .9rem; }
+      .hero { gap: 10px; padding: 22px 19px; }
+      .hero-orbit { width: 58px; height: 58px; font-size: 1.45rem; }
+      .card { padding: 19px 16px; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="topbar">
+      <div class="brand" aria-label="BRITECH MD pairing">
+        <div class="brand-mark" aria-hidden="true">B</div>
+        <div><div class="brand-name">BRITECH MD</div><div class="brand-caption">WhatsApp pairing centre</div></div>
+      </div>
+      <div class="secure-badge"><span class="secure-dot" aria-hidden="true"></span> SECURE PAIRING</div>
+    </header>
+
+    <section class="hero" aria-labelledby="page-title">
+      <div class="hero-copy">
+        <p class="eyebrow">WhatsApp · Link a device</p>
+        <h1 id="page-title">Pair your device</h1>
+        <p>Connect your WhatsApp account to BRITECH MD with a one-time pairing code.</p>
+      </div>
+      <div class="hero-orbit" aria-hidden="true">⌁</div>
+    </section>
+
+    <div class="content">
+      <section class="card" aria-labelledby="connect-title">
+        <h2 class="card-heading" id="connect-title">Connect your device</h2>
+        <p class="card-subtitle">Enter the WhatsApp number you want to link.</p>
+        <div class="mode-chip" aria-label="Selected method: pairing code">🔑 Pairing Code <small>ONE-TIME CODE</small></div>
+
+        <label for="token">Private dashboard access token</label>
+        <input id="token" type="password" autocomplete="current-password" placeholder="Enter your KataBump pairing token" aria-describedby="token-hint">
+        <p class="field-hint" id="token-hint">Use the private token configured for the pairing dashboard.</p>
+
+        <label for="phone">WhatsApp number</label>
+        <input id="phone" inputmode="numeric" autocomplete="tel" placeholder="2547XXXXXXXX" aria-describedby="phone-hint">
+        <p class="field-hint" id="phone-hint">Country code included; digits only. Example: 2547XXXXXXXX.</p>
+
+        <button id="generate" type="button">Generate Pairing Code <span aria-hidden="true">→</span></button>
+
+        <div id="result" class="result hidden" aria-live="polite">
+          <div class="display">
+            <span class="display-label">PHONE NUMBER BEING PAIRED</span>
+            <strong id="pairedPhone" class="display-value">—</strong>
+          </div>
+          <div class="code-box">
+            <span class="display-label">YOUR ONE-TIME PAIRING CODE</span>
+            <strong id="code" class="code-value">—</strong>
+            <button id="copy" class="copy-button" type="button">⧉ Copy code</button>
+          </div>
+        </div>
+
+        <div id="status" class="status" role="status" aria-live="polite"><span class="status-mark" aria-hidden="true"></span><span id="statusText">Waiting for your request.</span></div>
+        <p class="warning">Never share your pairing code. Enter it only in WhatsApp’s Linked devices screen. This page does not write pairing codes to server logs.</p>
+      </section>
+
+      <aside class="card" aria-labelledby="steps-title">
+        <h2 class="card-heading" id="steps-title">How to link</h2>
+        <p class="card-subtitle">Three quick steps to connect WhatsApp.</p>
+        <ol class="steps">
+          <li class="step"><span class="step-number">1</span><span><strong>Generate your code</strong> here, then copy it.</span></li>
+          <li class="step"><span class="step-number">2</span><span>Open WhatsApp → <strong>Settings → Linked Devices → Link a Device</strong>.</span></li>
+          <li class="step"><span class="step-number">3</span><span>Tap <strong>Link with phone number instead</strong>, enter the code, and confirm.</span></li>
+        </ol>
+        <div class="delivery-note"><strong>After pairing:</strong> BRITECH MD sends the SESSION_ID to the paired number’s WhatsApp DM as a Word document and copyable text. Keep it private.</div>
+      </aside>
+    </div>
+
+    <footer class="footer">BRITECH MD · Private device-pairing interface</footer>
+  </main>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    let poller = null;
+    function token() { return $('token').value.trim(); }
+    function setStatus(message) { $('statusText').textContent = message; }
+    async function api(path, options = {}) {
+      const response = await fetch(path, {
+        ...options,
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}`, ...(options.headers || {}) }
+      });
+      let data;
+      try { data = await response.json(); } catch { throw new Error('The pairing service returned an unreadable response. Try again.'); }
+      if (!response.ok) throw new Error(data.error || 'Pairing request failed. Try again.');
+      return data;
+    }
+
+    $('generate').addEventListener('click', async () => {
+      clearInterval(poller);
+      const phone = $('phone').value.trim();
+      if (!token()) { setStatus('Enter the private dashboard access token first.'); $('token').focus(); return; }
+      if (!phone) { setStatus('Enter your WhatsApp number with country code.'); $('phone').focus(); return; }
+      $('generate').disabled = true;
+      $('result').classList.add('hidden');
+      $('code').textContent = '—';
+      setStatus('Connecting securely to WhatsApp…');
+      try {
+        await api('/api/pair/start', { method: 'POST', body: JSON.stringify({ phone }) });
+        setStatus('Pairing started. Waiting for your one-time code…');
+        poller = setInterval(check, 1800);
+        await check();
+      } catch (error) {
+        setStatus(error.message);
+        $('generate').disabled = false;
+      }
+    });
+
+    async function check() {
+      try {
+        const data = await api('/api/pair/status');
+        if (data.status === 'code_ready' && data.code) {
+          $('pairedPhone').textContent = '+' + (data.phone || $('phone').value).replace(/\D/g, '');
+          $('code').textContent = data.code;
+          $('result').classList.remove('hidden');
+          setStatus('Code ready. Enter it in WhatsApp on your phone.');
+          $('generate').disabled = false;
+        } else if (data.status === 'sending_session') {
+          setStatus('WhatsApp linked. Sending the SESSION_ID to the paired number as a Word document and copyable text…');
+        } else if (data.status === 'linked') {
+          $('result').classList.add('hidden');
+          const formats = [];
+          if (data.documentSent) formats.push('Word document');
+          if (data.textSent) formats.push('copyable text');
+          setStatus('WhatsApp linked. WhatsApp acknowledged ' + (formats.length ? formats.join(' and ') : 'the available SESSION_ID delivery') + '. Check the DM for the paired number.');
+          clearInterval(poller);
+          $('generate').disabled = false;
+        } else if (data.status === 'error') {
+          setStatus(data.error || 'Pairing failed. Please try again.');
+          clearInterval(poller);
+          $('generate').disabled = Boolean((data.error || '').startsWith('WhatsApp linked,'));
+        } else {
+          setStatus('Connecting securely to WhatsApp…');
+        }
+      } catch (error) {
+        setStatus(error.message);
+        clearInterval(poller);
+        $('generate').disabled = false;
+      }
+    }
+
+    $('copy').addEventListener('click', async () => {
+      const code = $('code').textContent;
+      try {
+        await navigator.clipboard.writeText(code);
+        $('copy').textContent = '✓ Copied';
+        setTimeout(() => { $('copy').textContent = '⧉ Copy code'; }, 1600);
+      } catch {
+        setStatus('Copy was blocked by your browser. Select the code and copy it manually.');
+      }
+    });
+  </script>
+</body>
+</html>

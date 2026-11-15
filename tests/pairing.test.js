@@ -19,9 +19,20 @@ const sessionIdLoader = require(path.join(root, 'lib/session-id'));
 test('pairing dashboard has separate phone and code displays with a code-copy action', () => {
   assert.match(dashboard, /id="pairedPhone"/);
   assert.match(dashboard, /id="code"/);
-  assert.match(dashboard, /id="copy"[^>]*>Copy Pair Code/);
-  assert.match(dashboard, /navigator\.clipboard\.writeText\(\$\('code'\)\.textContent\)/);
+  assert.match(dashboard, /id="copy"[^>]*>⧉ Copy code/);
+  assert.match(dashboard, /navigator\.clipboard\.writeText\(code\)/);
   assert.match(server, /phone: pairingPhone, code: pairingCode/);
+});
+
+test('pairing page has a responsive Keith-inspired connect panel and clear three-step guide', () => {
+  assert.match(dashboard, /Pair your device/);
+  assert.match(dashboard, /Connect your device/);
+  assert.match(dashboard, /How to link/);
+  assert.match(dashboard, /Link with phone number instead/);
+  assert.match(dashboard, /SESSION_ID to the paired number.s WhatsApp DM/);
+  assert.match(dashboard, /@media \(max-width: 720px\)/);
+  assert.match(dashboard, /id="generate"/);
+  assert.match(dashboard, /id="statusText"/);
 });
 
 test('session sender verifies the target number through the full paired identity', () => {
@@ -199,7 +210,8 @@ test('GitHub Actions makes a compact archive ID and does not hide delivery outco
   assert.match(sender, /deliverSession\(sock, recipient, sessionId\)/);
   assert.match(server, /deliverSession\(sock, recipient, sessionId\)/);
   assert.match(sender, /word document did not receive a WhatsApp server acknowledgement/i);
-  assert.match(dashboard, /d\.documentSent/);
+  assert.match(dashboard, /data\.documentSent/);
+  assert.match(dashboard, /data\.textSent/);
   assert.match(dashboard, /WhatsApp acknowledged/);
 });
 
