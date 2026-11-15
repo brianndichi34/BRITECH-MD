@@ -11,15 +11,14 @@ const groupTools = require('../plugins/group-tools');
 const presence = require('../plugins/presence');
 const brandSettings = require('../plugins/brand-settings');
 const health = require('../plugins/health');
-const { getText } = require('../lib/handler');
-const { handleMessage } = require('../lib/handler');
+const { getText, handleMessage, commands: allCommands } = require('../lib/handler');
 const root = path.join(__dirname, '..');
 
 test('plugin registry loads unique command names and describes all available modules', () => {
   assert.deepEqual(plugins.plugins.map(plugin => plugin.name), [
     'brand-and-manus', 'group-tools', 'health-and-safe-repair', 'whatsapp-interactions', 'local-media', 'presence'
   ]);
-  for (const command of ['sticker', 'toimg', 'qr', 'poll', 'react', 'setname', 'setdesc', 'mute', 'unmute', 'revoke', 'afk', 'back', 'settings', 'setmenuprofile', 'manus', 'doctor', 'diagnose', 'autofix']) {
+  for (const command of ['sticker', 'toimg', 'qr', 'poll', 'react', 'setname', 'setdesc', 'mute', 'unmute', 'revoke', 'afk', 'back', 'settings', 'setmenuprofile', 'manus', 'manuscheck', 'doctor', 'diagnose', 'autofix']) {
     assert.equal(typeof plugins.descriptions[command], 'string', `${command} should be registered`);
   }
   assert.equal(plugins.get('STICKER').plugin, media);
@@ -165,6 +164,7 @@ test('handler exposes plugin commands in menu/help while preserving existing dep
   assert.match(sent[0].payload.caption, /BRITECH MD/);
   assert.match(sent[1].payload.text, /\.sticker/);
   assert.match(sent[1].payload.text, /\.poll/);
+  for (const command of Object.keys(allCommands)) assert.ok(sent[1].payload.text.includes(`.${command}`), `menu must list .${command}`);
   await handleMessage(sock, { key: { remoteJid: '254700000002@s.whatsapp.net', fromMe: false }, message: { conversation: '.help revoke' } });
   assert.match(sent[2].payload.text, /Renew the group invite link/);
   const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
@@ -235,6 +235,32 @@ test('Manus API task creation uses private v2 task.create and returns its task l
     assert.equal(request.url, 'https://api.manus.ai/v2/task.create');
     assert.equal(request.options.headers['x-manus-api-key'], 'test-only-key');
     assert.equal(JSON.parse(request.options.body).share_visibility, 'private');
+  } finally {
+    global.fetch = priorFetch;
+    if (priorKey === undefined) delete process.env.MANUS_API_KEY; else process.env.MANUS_API_KEY = priorKey;
+  }
+});
+
+test('Manus API key check validates auth privately and reports invalid credentials without exposing them', async () => {
+  const priorKey = process.env.MANUS_API_KEY;
+  const priorFetch = global.fetch;
+  process.env.MANUS_API_KEY = '  test-only-key  ';
+  let request;
+  try {
+    global.fetch = async (url, options) => {
+      request = { url, options };
+      return { ok: true, async json() { return { ok: true, user_id: 'user-test-id' }; } };
+    };
+    assert.equal(await brandSettings.checkManusApiKey(), true);
+    assert.equal(request.url, 'https://api.manus.ai/v2/user.me');
+    assert.equal(request.options.headers['x-manus-api-key'], 'test-only-key');
+
+    global.fetch = async () => ({ ok: false, status: 401, async json() { return { ok: false }; } });
+    await assert.rejects(brandSettings.checkManusApiKey(), error => {
+      assert.match(error.message, /rejected the API key/);
+      assert.equal(error.message.includes('test-only-key'), false);
+      return true;
+    });
   } finally {
     global.fetch = priorFetch;
     if (priorKey === undefined) delete process.env.MANUS_API_KEY; else process.env.MANUS_API_KEY = priorKey;

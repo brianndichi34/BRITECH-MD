@@ -3,10 +3,12 @@ const path = require('node:path');
 const dns = require('node:dns/promises');
 const net = require('node:net');
 const sharp = require('sharp');
+const config = require('../lib/config');
 
 const MAX_PROFILE_BYTES = 5 * 1024 * 1024;
 const ASSET_DIR = path.join(__dirname, '..', 'assets');
 const MENU_PROFILE_PATH = path.join(ASSET_DIR, 'menu-profile.jpg');
+function configuredManusKey() { return String(process.env.MANUS_API_KEY || config.manusApiKey || '').trim(); }
 
 function isPrivateAddress(address) {
   const family = net.isIP(address);
@@ -98,7 +100,7 @@ async function setMenuProfile(ctx) {
 }
 
 async function createManusTask(prompt) {
-  const apiKey = process.env.MANUS_API_KEY;
+  const apiKey = configuredManusKey();
   if (!apiKey) throw new Error('Manus AI is not configured. Add MANUS_API_KEY to the bot host environment, then restart.');
   if (!prompt || prompt.trim().length < 2) throw new Error('Usage: .manus your question or task');
   if (prompt.length > 4000) throw new Error('Manus prompts are limited to 4,000 characters.');
@@ -120,16 +122,40 @@ async function createManusTask(prompt) {
   return { title: data.task_title || 'Manus task', url: data.task_url };
 }
 
+async function checkManusApiKey() {
+  const apiKey = configuredManusKey();
+  if (!apiKey) throw new Error('MANUS_API_KEY is not configured. Add it privately to KataBump environment variables or the host-only .env file, then restart the bot.');
+  let response;
+  try {
+    response = await fetch('https://api.manus.ai/v2/user.me', {
+      method: 'GET',
+      headers: { 'x-manus-api-key': apiKey },
+      signal: AbortSignal.timeout(12000)
+    });
+  } catch {
+    throw new Error('Could not reach the Manus API. Check the host network and try again.');
+  }
+  let data;
+  try { data = await response.json(); } catch { throw new Error(`Manus API returned an unreadable response (HTTP ${response.status}).`); }
+  if (!response.ok || data?.ok !== true || !data?.user_id) {
+    if (response.status === 401) throw new Error('Manus rejected the API key. Check the MANUS_API_KEY value in the bot host settings and restart.');
+    throw new Error(`Manus API key check failed (HTTP ${response.status}). Check the key and account access in Manus settings.`);
+  }
+  return true;
+}
+
 module.exports = {
   name: 'brand-and-manus',
   category: 'BRITECH / AI',
   commands: {
     settings: 'Show BRITECH MD settings and feature status',
     setmenuprofile: 'Set the bot WhatsApp/menu profile picture from a direct HTTPS image URL (owner only)',
-    manus: 'Start a private Manus AI task and receive its task link (owner only; needs MANUS_API_KEY)'
+    manus: 'Start a private Manus AI task and receive its task link (owner only; needs MANUS_API_KEY)',
+    manuscheck: 'Check that the configured Manus API key is accepted without showing the key (owner only)'
   },
   fetchProfileImage,
   createManusTask,
+  checkManusApiKey,
   async handle(command, ctx) {
     if (command === 'settings') {
       const status = value => value ? '✅ ON' : '▫️ OFF';
@@ -162,6 +188,11 @@ module.exports = {
       return ctx.reply(dashboard);
     }
     if (command === 'setmenuprofile') return setMenuProfile(ctx);
+    if (command === 'manuscheck') {
+      if (!ctx.isOwner(ctx.sender)) return ctx.reply('Only the bot owner can check the Manus API configuration.');
+      await checkManusApiKey();
+      return ctx.reply('✅ Manus API key is valid and the account is reachable. The key itself was not displayed.');
+    }
     if (command === 'manus') {
       if (!ctx.isOwner(ctx.sender)) return ctx.reply('Only the bot owner can run Manus AI tasks.');
       const task = await createManusTask(ctx.query);

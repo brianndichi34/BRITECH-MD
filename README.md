@@ -35,7 +35,7 @@ Incoming WhatsApp statuses are automatically marked viewed and reacted to with `
 
 Anti-delete is enabled by default. When Baileys receives a message-revocation event, BRITECH MD forwards the cached original message from a group or private chat directly into the linked account's own WhatsApp DM (self-chat), with the source chat and sender noted. It falls back to `OWNER_NUMBER` only if the linked account identity is unavailable. It keeps up to 1,000 messages in memory for 48 hours; only messages received while the bot is online can be recovered, and the cache clears on restart. Set `AUTO_ANTI_DELETE=false` to disable this feature.
 
-The owner-only `.manus <prompt>` command starts a **private** Manus API v2 task and replies with its task link; the answer is read in Manus rather than relayed back into WhatsApp. To enable it, create a Manus API key in your Manus API settings and set it privately as `MANUS_API_KEY` in the host environment, then restart. Do not commit or share the key. This uses task creation, not a synchronous chat-completions endpoint. If the key is absent, `.manus` returns setup guidance. The existing `.ai` command remains separate and uses `OPENAI_API_KEY`.
+The owner-only `.manus <prompt>` command starts a **private** Manus API v2 task and replies with its task link; the answer is read in Manus rather than relayed back into WhatsApp. To enable it, create a Manus API key in your Manus API settings and set it privately as `MANUS_API_KEY` in KataBump's environment variables or the host-only root `.env`, then restart. Keep the repository's `.env.example` and committed `.env` value blank: a GitHub Actions secret is not automatically passed to a separately hosted KataBump bot. Use `.manuscheck` to verify the key against Manus's read-only `user.me` endpoint; the bot reports only success/failure and never displays the key. This uses task creation, not a synchronous chat-completions endpoint. If the key is absent, `.manus` returns setup guidance. The existing `.ai` command remains separate and uses `OPENAI_API_KEY`.
 
 `.doctor` opens WhatsApp quick-reply buttons for **Identify Problem** (`.diagnose`) and **Auto-fix Safe Issues** (`.autofix`). Diagnosis checks runtime major, connection state, session-file presence/registration, environment-file presence, Baileys installation, avatar asset, and feature toggles without showing secret values. Auto-fix is owner-only: it may create the configured auth directory or restore a missing root `.env` from the safe template, but never overwrites a file, edits environment values, or deletes/replaces WhatsApp credentials. Node version selection, invalid sessions, missing host packages, and network/pairing problems still require operator action; it reports those next steps.
 
@@ -109,7 +109,7 @@ KataBump's web upload process requires a ZIP containing `package.json` and the e
 | `PAIRING_PORT` / `PORT` | No | Web dashboard port; default `3000` |
 | `OPENAI_API_KEY` | No | Enables AI command; keep secret |
 | `OPENAI_MODEL` | No | `gpt-4o-mini` |
-| `MANUS_API_KEY` | No | Optional owner-only `.manus` command; creates private Manus API v2 tasks |
+| `MANUS_API_KEY` | No | Optional owner-only `.manus` and `.manuscheck`; set privately on the bot host, never commit a real key |
 | `AUTO_READ` | No | `false` |
 | `AUTO_VIEW_STATUS` | No | `true`; automatically mark incoming contact statuses viewed |
 | `AUTO_LIKE_STATUS` | No | `true`; send a status reaction once per status |
@@ -123,7 +123,7 @@ KataBump's web upload process requires a ZIP containing `package.json` and the e
 
 - General: `.menu`, `.settings`, `.doctor` (interactive health actions), `.diagnose`, `.autofix` (owner-only safe repair), `.help`, `.ping`, `.alive`, `.owner`, `.info`, `.repo`
 - Utilities: `.time`, `.date`, `.calc 25*(4+2)`, `.quote`, `.echo text`, `.ai question`
-- Brand & AI: `.setmenuprofile https://example.com/image.jpg` (owner only), `.manus question` (owner only; optional `MANUS_API_KEY`)
+- Brand & AI: `.setmenuprofile https://example.com/image.jpg` (owner only), `.manus question` (owner only; optional `MANUS_API_KEY`), `.manuscheck` (owner-only key validation)
 - Groups: `.groupinfo`, `.admins`, `.tagall`, `.hidetag`, `.link`, `.close`, `.open`, `.kick`, `.promote`, `.demote`
 - Plugins: `.sticker` (reply to or caption an image), `.toimg` (reply to a sticker), `.qr text`, `.poll Question | Option 1 | Option 2`, `.react 👍` (reply to a message), `.afk reason`, `.back`, `.setname`, `.setdesc`, `.mute`, `.unmute`, `.revoke`
 
