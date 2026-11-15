@@ -36,7 +36,7 @@ test('incoming contact status is marked read and reacted to with Baileys statusJ
   const duplicate = await handleStatusMessage(sock, { key }, settings, silentLogger);
   assert.equal(duplicate.liked, true);
   assert.equal(sends.length, 1, 'duplicate upserts should not send repeated reactions');
-  assert.equal(reads.length, 2, 're-marking a status read is safe and idempotent');
+  assert.equal(reads.length, 1, 'a successfully viewed status should not be sent repeatedly');
 });
 
 test('status emoji choice is deterministic per status and supports legacy single-emoji config', () => {
@@ -86,6 +86,17 @@ test('failed auto-reaction can be retried with the same selected emoji on a late
   assert.equal(sentEmojis[0], sentEmojis[1]);
 });
 
+test('failed automatic status viewing retries on a later event and deduplicates after success', async () => {
+  let readCount = 0;
+  const key = { remoteJid: STATUS_JID, id: 'britech-status-read-retry', participant: '254700000015@s.whatsapp.net' };
+  const sock = { async readMessages() { readCount++; if (readCount === 1) throw new Error('temporary read error'); } };
+  const settings = { autoViewStatus: true, autoLikeStatus: false };
+  assert.equal((await handleStatusMessage(sock, { key }, settings, silentLogger)).viewed, false);
+  assert.equal((await handleStatusMessage(sock, { key }, settings, silentLogger)).viewed, true);
+  assert.equal((await handleStatusMessage(sock, { key }, settings, silentLogger)).viewed, true);
+  assert.equal(readCount, 2);
+});
+
 test('upsert dispatcher routes only live status notifications to status actions', async () => {
   const calls = [];
   const sock = {};
@@ -98,5 +109,23 @@ test('upsert dispatcher routes only live status notifications to status actions'
     { key: { remoteJid: '254700000001@s.whatsapp.net' } }
   ], 'notify', {}, silentLogger, handlers);
   await dispatchUpsert(sock, [{ key: { remoteJid: STATUS_JID, id: 'old-status' } }], 'append', {}, silentLogger, handlers);
-  assert.deepEqual(calls, [['status', 'status-a'], ['command', '254700000001@s.whatsapp.net']]);
+  await dispatchUpsert(sock, [{ key: { remoteJid: '254700000002@s.whatsapp.net' } }], 'append', {}, silentLogger, handlers);
+  assert.deepEqual(calls, [['status', 'status-a'], ['command', '254700000001@s.whatsapp.net'], ['status', 'old-status']]);
+});
+
+test('slow automatic status handling does not serialize command replies in the same upsert batch', async () => {
+  let releaseStatus;
+  let commandStarted = false;
+  const slowStatus = new Promise(resolve => { releaseStatus = resolve; });
+  const processing = dispatchUpsert({}, [
+    { key: { remoteJid: STATUS_JID, id: 'slow-status' } },
+    { key: { remoteJid: '254700000003@s.whatsapp.net', id: 'quick-command' } }
+  ], 'notify', {}, silentLogger, {
+    async handleStatusMessage() { await slowStatus; },
+    async handleMessage() { commandStarted = true; }
+  });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(commandStarted, true, 'command work should begin without waiting for status actions');
+  releaseStatus();
+  await processing;
 });

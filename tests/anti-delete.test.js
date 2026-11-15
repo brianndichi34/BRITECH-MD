@@ -63,7 +63,7 @@ test('revoked messages from groups and private chats are sent to the owner DM', 
   assert.equal(antiDelete.cacheSize(), 0);
 });
 
-test('ordinary updates, owner self-chat, and status messages are not archived', async () => {
+test('ordinary updates, owner self-chat, status messages, and status revocations are ignored', async () => {
   const antiDelete = createAntiDelete();
   const sock = { user: { id: pairedJid } };
   const input = [
@@ -75,6 +75,18 @@ test('ordinary updates, owner self-chat, and status messages are not archived', 
   assert.equal(await antiDelete.handleUpdates({ async sendMessage() { throw new Error('not a revoke'); } }, [
     { key: { remoteJid: '254700000012@s.whatsapp.net', id: 'ordinary' }, update: { status: 3 } }
   ], { autoAntiDelete: true, ownerNumber }, silentLogger), 0);
+});
+
+test('status revocation events never generate anti-delete DM notifications', async () => {
+  const antiDelete = createAntiDelete();
+  let sends = 0;
+  const sock = { user: { id: pairedJid }, async sendMessage() { sends++; } };
+  const statusRevoke = {
+    key: { remoteJid: 'status@broadcast', id: 'status-item-1', participant: '254700000011@s.whatsapp.net' },
+    update: { messageStubType: WAMessageStubType.REVOKE, key: { remoteJid: 'status@broadcast', id: 'status-revoke-1' } }
+  };
+  assert.equal(await antiDelete.handleUpdates(sock, [statusRevoke], { autoAntiDelete: true, ownerNumber }, silentLogger), 0);
+  assert.equal(sends, 0);
 });
 
 test('cache is bounded and repeated revoke notifications do not forward twice', async () => {

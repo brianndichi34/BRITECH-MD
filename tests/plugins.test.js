@@ -11,14 +11,15 @@ const groupTools = require('../plugins/group-tools');
 const presence = require('../plugins/presence');
 const brandSettings = require('../plugins/brand-settings');
 const health = require('../plugins/health');
+const maintenance = require('../plugins/maintenance');
 const { getText, handleMessage, commands: allCommands } = require('../lib/handler');
 const root = path.join(__dirname, '..');
 
 test('plugin registry loads unique command names and describes all available modules', () => {
   assert.deepEqual(plugins.plugins.map(plugin => plugin.name), [
-    'brand-and-manus', 'group-tools', 'health-and-safe-repair', 'whatsapp-interactions', 'local-media', 'presence'
+    'brand-and-manus', 'group-tools', 'health-and-safe-repair', 'whatsapp-interactions', 'maintenance-and-diagnostics', 'local-media', 'presence'
   ]);
-  for (const command of ['sticker', 'toimg', 'qr', 'poll', 'react', 'setname', 'setdesc', 'mute', 'unmute', 'revoke', 'afk', 'back', 'settings', 'setmenuprofile', 'manus', 'manuscheck', 'doctor', 'diagnose', 'autofix']) {
+  for (const command of ['sticker', 'toimg', 'qr', 'poll', 'react', 'setname', 'setdesc', 'mute', 'unmute', 'revoke', 'afk', 'back', 'settings', 'setmenuprofile', 'manus', 'manuscheck', 'doctor', 'diagnose', 'autofix', 'uptime', 'runtime', 'jid', 'update']) {
     assert.equal(typeof plugins.descriptions[command], 'string', `${command} should be registered`);
   }
   assert.equal(plugins.get('STICKER').plugin, media);
@@ -307,4 +308,26 @@ test('safe auto-fix creates missing folders and env starter but never overwrites
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('maintenance commands provide diagnostics and restrict package upgrades to the owner', async () => {
+  const replies = [];
+  const context = { chat: 'group@g.us', sender: 'user@s.whatsapp.net', args: [], config: { prefix: '.' }, async reply(text) { replies.push(text); }, isOwner: () => false };
+  await maintenance.handle('uptime', context);
+  await maintenance.handle('runtime', context);
+  await maintenance.handle('jid', context);
+  await maintenance.handle('update', context);
+  assert.match(replies[0], /process uptime/);
+  assert.match(replies[1], new RegExp(process.version.replaceAll('.', '\\.')));
+  assert.match(replies[2], /group@g\.us/);
+  assert.match(replies[3], /Only the bot owner/);
+});
+
+test('dependency update check parses npm outdated JSON without installing packages', async () => {
+  const result = await maintenance.outdatedDependencies(async args => {
+    assert.deepEqual(args, ['outdated', '--json', '--no-fund', '--no-audit']);
+    return { stdout: JSON.stringify({ baileys: { current: '6.7.23', wanted: '6.7.24', latest: '7.0.0' } }) };
+  });
+  assert.deepEqual(result, [{ name: 'baileys', current: '6.7.23', wanted: '6.7.24', latest: '7.0.0' }]);
+  assert.equal(maintenance.formatUptime(90061), '1d 1h 1m 1s');
 });
