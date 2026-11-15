@@ -29,13 +29,17 @@ The pairing page is designed to make phone-number pairing easy on mobile: enter 
 
 After dashboard pairing is confirmed, the dashboard sends the `SESSION_ID` to the WhatsApp DM for the entered phone number as a Word document and separately as plain text. It verifies that number against the connected account’s phone JID or verified PN alias, including accounts whose primary identity is a LID. It rejects groups, broadcasts, and identities that cannot be tied to the entered number. The GitHub Actions workflow uses the same phone-number routing. Delivery is reported only when Baileys emits a WhatsApp server acknowledgement for the corresponding message; a locally-created message ID is not treated as proof. Very long plain-text IDs are split into ordered chunks that must be joined with no spaces or line breaks. The Word document contains the complete ID and is attempted as a separate route. New `BRITECH3:` IDs use Brotli compression over the auth files directly; older `BRITECH2:` IDs remain supported. Open the Word file to copy the complete value. Treat it as a password; do not post it in issues, logs, screenshots, or chat. Configure the dashboard with `PAIRING_DASHBOARD_TOKEN` and `SESSION_DIR` before exposing it.
 
-The command system also loads local modules from `plugins/`. These are independently implemented BRITECH features, not Keith-hosted API calls: image stickers, sticker-to-PNG conversion, QR images, native WhatsApp polls and reactions, AFK notices, group name/description updates, mute/unmute, and invite-link renewal. They need no extra API keys; sticker/PNG and QR processing runs locally. Video-to-sticker conversion and downloader commands that rely on third-party APIs are intentionally omitted. Existing commands remain available.
+The command system also loads local modules from `plugins/`. The `.menu` command now opens with a generated BRITECH MD avatar and a redesigned, phone-readable layout using consistent color-coded emoji accents, bold section titles, compact command rows, and clear separators. `.settings` and `.doctor` use the same visual style. On first connection, the generated avatar is applied to the bot's WhatsApp profile by default; owners can use `.setmenuprofile https://...` with a direct public HTTPS image URL to update both the WhatsApp account photo and the image used by the menu. Set `AUTO_SET_BOT_PROFILE=false` to stop automatic profile updates. Image downloads are size-limited and local/private URLs are rejected. Other local features include stickers, QR images, native polls/reactions, AFK notices, group name/description changes, mute/unmute, and invite-link renewal.
 
 Incoming WhatsApp statuses are automatically marked viewed and reacted to with `❤️` by default. This uses the linked WhatsApp account: the status owner can see the view and reaction. Set `AUTO_VIEW_STATUS=false` or `AUTO_LIKE_STATUS=false` in `.env` to turn either action off; `STATUS_LIKE_EMOJI` changes the reaction. Normal chat read receipts remain controlled separately by `AUTO_READ`.
 
-Anti-delete is enabled by default. When Baileys receives a message-revocation event, BRITECH MD forwards the cached original message from a group or private chat to the `OWNER_NUMBER` WhatsApp DM, with the source chat and sender noted. It keeps up to 1,000 messages in memory for 48 hours; only messages received while the bot is online can be recovered, and the cache clears on restart. Set `AUTO_ANTI_DELETE=false` to disable this feature.
+Anti-delete is enabled by default. When Baileys receives a message-revocation event, BRITECH MD forwards the cached original message from a group or private chat directly into the linked account's own WhatsApp DM (self-chat), with the source chat and sender noted. It falls back to `OWNER_NUMBER` only if the linked account identity is unavailable. It keeps up to 1,000 messages in memory for 48 hours; only messages received while the bot is online can be recovered, and the cache clears on restart. Set `AUTO_ANTI_DELETE=false` to disable this feature.
 
-The automated test suite checks the pairing display/copy controls, BRITECH session-ID encoding, number-match guard, phone-number DM routing, Word/text generation, chunking, acknowledgement handling, plugin loading, local media/poll/group behavior, status event routing, and anti-delete caching/forwarding. It does not perform a real WhatsApp login or prove live status receipts/reactions, anti-delete delivery, or inbox delivery. Verify these on a user-controlled live deployment.
+The owner-only `.manus <prompt>` command starts a **private** Manus API v2 task and replies with its task link; the answer is read in Manus rather than relayed back into WhatsApp. To enable it, create a Manus API key in your Manus API settings and set it privately as `MANUS_API_KEY` in the host environment, then restart. Do not commit or share the key. This uses task creation, not a synchronous chat-completions endpoint. If the key is absent, `.manus` returns setup guidance. The existing `.ai` command remains separate and uses `OPENAI_API_KEY`.
+
+`.doctor` opens WhatsApp quick-reply buttons for **Identify Problem** (`.diagnose`) and **Auto-fix Safe Issues** (`.autofix`). Diagnosis checks runtime major, connection state, session-file presence/registration, environment-file presence, Baileys installation, avatar asset, and feature toggles without showing secret values. Auto-fix is owner-only: it may create the configured auth directory or restore a missing root `.env` from the safe template, but never overwrites a file, edits environment values, or deletes/replaces WhatsApp credentials. Node version selection, invalid sessions, missing host packages, and network/pairing problems still require operator action; it reports those next steps.
+
+The automated test suite checks the pairing display/copy controls, BRITECH session-ID encoding, number-match guard, phone-number DM routing, Word/text generation, chunking, acknowledgement handling, plugin loading, local media/poll/group behavior, status event routing, anti-delete caching/self-chat forwarding, menu/profile safety, and Manus task request construction. It does not perform a real WhatsApp login or prove live WhatsApp delivery or Manus API key validity. Verify these on a user-controlled live deployment.
 
 ## Generate a WhatsApp session ID
 
@@ -105,18 +109,21 @@ KataBump's web upload process requires a ZIP containing `package.json` and the e
 | `PAIRING_PORT` / `PORT` | No | Web dashboard port; default `3000` |
 | `OPENAI_API_KEY` | No | Enables AI command; keep secret |
 | `OPENAI_MODEL` | No | `gpt-4o-mini` |
+| `MANUS_API_KEY` | No | Optional owner-only `.manus` command; creates private Manus API v2 tasks |
 | `AUTO_READ` | No | `false` |
 | `AUTO_VIEW_STATUS` | No | `true`; automatically mark incoming contact statuses viewed |
 | `AUTO_LIKE_STATUS` | No | `true`; send a status reaction once per status |
 | `AUTO_ANTI_DELETE` | No | `true`; forward cached revoked messages from groups and chats to the owner DM |
+| `AUTO_SET_BOT_PROFILE` | No | `true`; apply the generated or custom avatar to the linked WhatsApp account on startup |
 | `STATUS_LIKE_EMOJI` | No | `❤️`; emoji to react with |
 | `LOG_LEVEL` | No | `info` |
 | `WELCOME_MESSAGE` | No | Group-join welcome; defaults in `.env.example` to `WELCOME TO BRITECH BOT🔥💯` / `FOUNDED BY BRIAN N.🌺`; supports `{user}` |
 
 ## Commands
 
-- General: `.menu`, `.help`, `.ping`, `.alive`, `.owner`, `.info`, `.repo`
+- General: `.menu`, `.settings`, `.doctor` (interactive health actions), `.diagnose`, `.autofix` (owner-only safe repair), `.help`, `.ping`, `.alive`, `.owner`, `.info`, `.repo`
 - Utilities: `.time`, `.date`, `.calc 25*(4+2)`, `.quote`, `.echo text`, `.ai question`
+- Brand & AI: `.setmenuprofile https://example.com/image.jpg` (owner only), `.manus question` (owner only; optional `MANUS_API_KEY`)
 - Groups: `.groupinfo`, `.admins`, `.tagall`, `.hidetag`, `.link`, `.close`, `.open`, `.kick`, `.promote`, `.demote`
 - Plugins: `.sticker` (reply to or caption an image), `.toimg` (reply to a sticker), `.qr text`, `.poll Question | Option 1 | Option 2`, `.react 👍` (reply to a message), `.afk reason`, `.back`, `.setname`, `.setdesc`, `.mute`, `.unmute`, `.revoke`
 

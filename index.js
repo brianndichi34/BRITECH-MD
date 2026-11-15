@@ -10,8 +10,24 @@ const { createAntiDelete } = require('./lib/anti-delete');
 
 let stopping = false;
 let reconnectTimer;
+let profileInitialized = false;
 const logger = pino({ level: config.logLevel });
 const antiDelete = createAntiDelete();
+
+async function initializeBotProfile(sock) {
+  if (profileInitialized || !config.autoSetBotProfile || typeof sock.updateProfilePicture !== 'function') return;
+  const customPath = path.join(__dirname, 'assets', 'menu-profile.jpg');
+  const generatedPath = path.join(__dirname, 'assets', 'britech-md-avatar.png');
+  const profilePath = fs.existsSync(customPath) ? customPath : generatedPath;
+  if (!fs.existsSync(profilePath) || !sock.user?.id) return;
+  try {
+    await sock.updateProfilePicture(sock.user.id, fs.readFileSync(profilePath));
+    profileInitialized = true;
+    logger.info('BRITECH MD profile picture initialized from its saved avatar.');
+  } catch (error) {
+    logger.warn({ err: error?.message || error }, 'Could not initialize the WhatsApp profile picture; .setmenuprofile can retry.');
+  }
+}
 
 /** Import SESSION_ID only when no existing auth session is present. */
 async function hydrateSessionFromEnv() {
@@ -46,9 +62,12 @@ async function startBot() {
   });
 
   sock.ev.on('creds.update', saveCreds);
-  sock.ev.on('connection.update', update => {
+  sock.ev.on('connection.update', async update => {
     const { connection, lastDisconnect } = update;
-    if (connection === 'open') logger.info(`✅ ${config.botName} connected as ${sock.user?.id}`);
+    if (connection === 'open') {
+      logger.info(`✅ ${config.botName} connected as ${sock.user?.id}`);
+      await initializeBotProfile(sock);
+    }
     if (connection === 'close' && !stopping) {
       const code = lastDisconnect?.error?.output?.statusCode;
       if (code === DisconnectReason.loggedOut) {

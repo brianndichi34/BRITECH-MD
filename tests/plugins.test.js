@@ -9,14 +9,17 @@ const media = require('../plugins/media');
 const interactive = require('../plugins/interactive');
 const groupTools = require('../plugins/group-tools');
 const presence = require('../plugins/presence');
+const brandSettings = require('../plugins/brand-settings');
+const health = require('../plugins/health');
+const { getText } = require('../lib/handler');
 const { handleMessage } = require('../lib/handler');
 const root = path.join(__dirname, '..');
 
 test('plugin registry loads unique command names and describes all available modules', () => {
   assert.deepEqual(plugins.plugins.map(plugin => plugin.name), [
-    'group-tools', 'whatsapp-interactions', 'local-media', 'presence'
+    'brand-and-manus', 'group-tools', 'health-and-safe-repair', 'whatsapp-interactions', 'local-media', 'presence'
   ]);
-  for (const command of ['sticker', 'toimg', 'qr', 'poll', 'react', 'setname', 'setdesc', 'mute', 'unmute', 'revoke', 'afk', 'back']) {
+  for (const command of ['sticker', 'toimg', 'qr', 'poll', 'react', 'setname', 'setdesc', 'mute', 'unmute', 'revoke', 'afk', 'back', 'settings', 'setmenuprofile', 'manus', 'doctor', 'diagnose', 'autofix']) {
     assert.equal(typeof plugins.descriptions[command], 'string', `${command} should be registered`);
   }
   assert.equal(plugins.get('STICKER').plugin, media);
@@ -158,10 +161,12 @@ test('handler exposes plugin commands in menu/help while preserving existing dep
   const sent = [];
   const sock = { async sendMessage(chat, payload) { sent.push({ chat, payload }); } };
   await handleMessage(sock, { key: { remoteJid: '254700000001@s.whatsapp.net', fromMe: false }, message: { conversation: '.menu' }, messageTimestamp: Math.floor(Date.now() / 1000) });
-  assert.match(sent[0].payload.text, /\.sticker/);
-  assert.match(sent[0].payload.text, /\.poll/);
+  assert.equal(sent[0].payload.image.length > 100, true, 'menu should use the generated branded avatar');
+  assert.match(sent[0].payload.caption, /BRITECH MD/);
+  assert.match(sent[1].payload.text, /\.sticker/);
+  assert.match(sent[1].payload.text, /\.poll/);
   await handleMessage(sock, { key: { remoteJid: '254700000002@s.whatsapp.net', fromMe: false }, message: { conversation: '.help revoke' } });
-  assert.match(sent[1].payload.text, /Renew the group invite link/);
+  assert.match(sent[2].payload.text, /Renew the group invite link/);
   const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
   assert.equal(packageJson.scripts.start, 'node index.js');
   assert.ok(packageJson.dependencies.sharp && packageJson.dependencies.qrcode);
@@ -172,7 +177,10 @@ test('handler exposes plugin commands in menu/help while preserving existing dep
   assert.match(template, /^SESSION_ID=$/m);
   assert.match(template, /^AUTO_VIEW_STATUS=true$/m);
   assert.match(template, /^AUTO_LIKE_STATUS=true$/m);
+  assert.match(template, /^AUTO_ANTI_DELETE=true$/m);
+  assert.match(template, /^AUTO_SET_BOT_PROFILE=true$/m);
   assert.match(template, /^STATUS_LIKE_EMOJI=❤️$/m);
+  assert.match(template, /^MANUS_API_KEY=$/m);
 });
 
 test('handler processes prefixed self-chat commands but ignores ordinary outgoing messages', async () => {
@@ -185,8 +193,92 @@ test('handler processes prefixed self-chat commands but ignores ordinary outgoin
   await handleMessage(sock, msg('.ping'));
   await handleMessage(sock, msg('ordinary outgoing message'));
 
-  assert.equal(sent.length, 2);
-  assert.match(sent[0].payload.text, /BRITECH MD/);
-  assert.match(sent[1].payload.text, /Pong!/);
+  assert.equal(sent.length, 3);
+  assert.match(sent[0].payload.caption, /BRITECH MD/);
+  assert.match(sent[1].payload.text, /BRITECH MD/);
+  assert.match(sent[2].payload.text, /Pong!/);
   assert.ok(sent.every(item => item.chat === chat));
+});
+
+
+test('settings dashboard displays live protection, status, profile, and AI state', async () => {
+  let text = '';
+  await brandSettings.handle('settings', {
+    config: { botName: 'BRITECH MD', ownerName: 'Brian', prefix: '.', timezone: 'Africa/Nairobi', autoAntiDelete: true, autoViewStatus: true, autoLikeStatus: true, autoRead: false, openaiKey: '', manusApiKey: '' },
+    sock: { user: { id: '254717276195@s.whatsapp.net' } }, menuProfileAvailable: true,
+    async reply(value) { text = value; }
+  });
+  assert.match(text, /BOT SETTINGS & STATUS/);
+  assert.match(text, /Anti-delete → ✅ ON/);
+  assert.match(text, /Deleted content → linked account DM/);
+  assert.match(text, /Menu profile → ✅ ON/);
+});
+
+test('profile URL validation blocks insecure and local endpoints', async () => {
+  await assert.rejects(brandSettings.fetchProfileImage('http://example.com/pic.jpg'), /HTTPS/);
+  await assert.rejects(brandSettings.fetchProfileImage('https://127.0.0.1/pic.jpg'), /Private or local/);
+  await assert.rejects(brandSettings.fetchProfileImage('https://localhost/pic.jpg'), /Private or local/);
+});
+
+test('Manus API task creation uses private v2 task.create and returns its task link', async () => {
+  const priorKey = process.env.MANUS_API_KEY;
+  const priorFetch = global.fetch;
+  process.env.MANUS_API_KEY = 'test-only-key';
+  let request;
+  global.fetch = async (url, options) => {
+    request = { url, options };
+    return { ok: true, async json() { return { ok: true, task_title: 'Test task', task_url: 'https://manus.im/app/test-task' }; } };
+  };
+  try {
+    const result = await brandSettings.createManusTask('Summarize my bot settings');
+    assert.equal(result.url, 'https://manus.im/app/test-task');
+    assert.equal(request.url, 'https://api.manus.ai/v2/task.create');
+    assert.equal(request.options.headers['x-manus-api-key'], 'test-only-key');
+    assert.equal(JSON.parse(request.options.body).share_visibility, 'private');
+  } finally {
+    global.fetch = priorFetch;
+    if (priorKey === undefined) delete process.env.MANUS_API_KEY; else process.env.MANUS_API_KEY = priorKey;
+  }
+});
+
+
+test('Bot Doctor sends real WhatsApp quick-reply buttons with supported command IDs', async () => {
+  let call;
+  const sock = { user: { id: '254717276195@s.whatsapp.net' }, async relayMessage(...args) { call = args; } };
+  assert.equal(await health.sendDoctorPanel(sock, '254700000001@s.whatsapp.net', 'Health summary'), true);
+  assert.equal(call[0], '254700000001@s.whatsapp.net');
+  const encoded = require('@whiskeysockets/baileys').proto.Message.encode(call[1]).finish();
+  assert.ok(encoded.length > 0, 'interactive message must serialize using the Baileys proto');
+  const roundTrip = require('@whiskeysockets/baileys').proto.Message.decode(encoded);
+  const buttons = roundTrip.viewOnceMessage.message.interactiveMessage.nativeFlowMessage.buttons;
+  assert.equal(JSON.parse(buttons[0].buttonParamsJson).id, '.diagnose');
+  assert.equal(JSON.parse(buttons[1].buttonParamsJson).id, '.autofix');
+});
+
+test('interactive quick replies are parsed as commands by the message handler', () => {
+  assert.equal(getText({ message: { interactiveResponseMessage: { nativeFlowResponseMessage: { paramsJson: JSON.stringify({ id: '.diagnose' }) } } } }), '.diagnose');
+  assert.equal(getText({ message: { interactiveResponseMessage: { nativeFlowResponseMessage: { paramsJson: '{broken' } } } }), '');
+});
+
+test('safe auto-fix creates missing folders and env starter but never overwrites existing secrets or credentials', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'britech-doctor-'));
+  const sessionDir = path.join(dir, 'session', 'auth');
+  try {
+    fs.writeFileSync(path.join(dir, '.env.example'), 'SESSION_ID=\nMANUS_API_KEY=\n');
+    fs.mkdirSync(sessionDir, { recursive: true });
+    fs.writeFileSync(path.join(sessionDir, 'creds.json'), '{"registered":true,"me":{"id":"keep"}}');
+    fs.writeFileSync(path.join(dir, '.env'), 'SESSION_ID=private-value\n');
+    const before = fs.readFileSync(path.join(sessionDir, 'creds.json'), 'utf8');
+    const actions = await health.autoFixSafe({ root: dir, sessionDir });
+    assert.equal(actions.length, 1);
+    assert.equal(fs.readFileSync(path.join(dir, '.env'), 'utf8'), 'SESSION_ID=private-value\n');
+    assert.equal(fs.readFileSync(path.join(sessionDir, 'creds.json'), 'utf8'), before);
+
+    fs.rmSync(path.join(dir, '.env'));
+    const secondActions = await health.autoFixSafe({ root: dir, sessionDir: path.join(dir, 'new-auth') });
+    assert.equal(secondActions.length, 2);
+    assert.equal(fs.readFileSync(path.join(dir, '.env'), 'utf8'), 'SESSION_ID=\nMANUS_API_KEY=\n');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
