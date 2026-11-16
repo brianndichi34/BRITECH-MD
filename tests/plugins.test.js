@@ -4,6 +4,7 @@ const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 const sharp = require('sharp');
+const config = require('../lib/config');
 const plugins = require('../lib/plugin-loader');
 const media = require('../plugins/media');
 const interactive = require('../plugins/interactive');
@@ -12,7 +13,7 @@ const presence = require('../plugins/presence');
 const brandSettings = require('../plugins/brand-settings');
 const health = require('../plugins/health');
 const maintenance = require('../plugins/maintenance');
-const { getText, handleMessage, commands: allCommands } = require('../lib/handler');
+const { getText, handleMessage, askAI, commands: allCommands } = require('../lib/handler');
 const { dispatchUpsert } = require('../lib/message-dispatcher');
 const root = path.join(__dirname, '..');
 
@@ -183,6 +184,8 @@ test('handler exposes plugin commands in menu/help while preserving existing dep
   assert.match(template, /^AUTO_SET_BOT_PROFILE=true$/m);
   assert.match(template, /^STATUS_LIKE_EMOJI=❤️$/m);
   assert.match(template, /^STATUS_LIKE_EMOJIS=❤️,🥰,🌺,💕,💥,🙏,🔥,💯,💘,💖$/m);
+  assert.match(template, /^GEMINI_API_KEY=$/m);
+  assert.match(template, /^GEMINI_MODEL=gemini-3\.6-flash$/m);
   assert.match(template, /^MANUS_API_KEY=$/m);
 });
 
@@ -293,6 +296,71 @@ test('Manus API key check validates auth privately and reports invalid credentia
   } finally {
     global.fetch = priorFetch;
     if (priorKey === undefined) delete process.env.MANUS_API_KEY; else process.env.MANUS_API_KEY = priorKey;
+  }
+});
+
+test('AI uses Gemini Flash when OpenAI is unset and reads generated text', async () => {
+  const oldOpenAI = config.openaiKey;
+  const oldGemini = config.geminiApiKey;
+  const oldModel = config.geminiModel;
+  const oldFetch = global.fetch;
+  let request;
+  try {
+    config.openaiKey = '';
+    config.geminiApiKey = 'test-gemini-key';
+    config.geminiModel = 'gemini-3.6-flash';
+    global.fetch = async (url, options) => {
+      request = { url, options };
+      return { ok: true, async json() { return { candidates: [{ content: { parts: [{ text: 'Hello from Gemini.' }] } }] }; } };
+    };
+    assert.equal(await askAI('Say hello'), 'Hello from Gemini.');
+    assert.equal(request.url, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent');
+    assert.equal(request.options.headers['x-goog-api-key'], 'test-gemini-key');
+    assert.equal(JSON.parse(request.options.body).contents[0].parts[0].text, 'Say hello');
+  } finally {
+    global.fetch = oldFetch;
+    config.openaiKey = oldOpenAI;
+    config.geminiApiKey = oldGemini;
+    config.geminiModel = oldModel;
+  }
+});
+
+test('AI keeps OpenAI preferred when both provider keys are configured', async () => {
+  const oldOpenAI = config.openaiKey;
+  const oldGemini = config.geminiApiKey;
+  const oldFetch = global.fetch;
+  let requestedUrl;
+  try {
+    config.openaiKey = 'test-openai-key';
+    config.geminiApiKey = 'test-gemini-key';
+    global.fetch = async url => {
+      requestedUrl = url;
+      return { ok: true, async json() { return { choices: [{ message: { content: 'Hello from OpenAI.' } }] }; } };
+    };
+    assert.equal(await askAI('Say hello'), 'Hello from OpenAI.');
+    assert.equal(requestedUrl, 'https://api.openai.com/v1/chat/completions');
+  } finally {
+    global.fetch = oldFetch;
+    config.openaiKey = oldOpenAI;
+    config.geminiApiKey = oldGemini;
+  }
+});
+
+test('AI gives setup guidance without calling a provider when no keys are configured', async () => {
+  const oldOpenAI = config.openaiKey;
+  const oldGemini = config.geminiApiKey;
+  const oldFetch = global.fetch;
+  let called = false;
+  try {
+    config.openaiKey = '';
+    config.geminiApiKey = '';
+    global.fetch = async () => { called = true; throw new Error('should not call provider'); };
+    await assert.rejects(askAI('test'), /GEMINI_API_KEY.*OPENAI_API_KEY/);
+    assert.equal(called, false);
+  } finally {
+    global.fetch = oldFetch;
+    config.openaiKey = oldOpenAI;
+    config.geminiApiKey = oldGemini;
   }
 });
 
