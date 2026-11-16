@@ -2,5 +2,7 @@ node_modules/
 .env
 session/auth/
 session/*.log
+session/.connect-welcome-*.sent
+session/.connect-welcome-*.sent.lock
 *.zip
 .DS_Store

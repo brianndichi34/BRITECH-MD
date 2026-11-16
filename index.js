@@ -7,6 +7,7 @@ const config = require('./lib/config');
 const { dispatchUpsert } = require('./lib/message-dispatcher');
 const { hydrateSessionId } = require('./lib/session-id');
 const { createAntiDelete } = require('./lib/anti-delete');
+const { sendConnectionWelcome } = require('./lib/connection-welcome');
 
 let stopping = false;
 let reconnectTimer;
@@ -66,6 +67,8 @@ async function startBot() {
     const { connection, lastDisconnect } = update;
     if (connection === 'open') {
       logger.info(`✅ ${config.botName} connected as ${sock.user?.id}`);
+      try { await sendConnectionWelcome(sock, config.welcomeMessage, { logger }); }
+      catch (error) { logger.error({ err: error?.message || error }, 'Could not persist the one-time connection welcome marker.'); }
       await initializeBotProfile(sock);
     }
     if (connection === 'close' && !stopping) {
@@ -90,7 +93,7 @@ async function startBot() {
   });
   sock.ev.on('group-participants.update', async update => {
     if (update.action !== 'add') return;
-    const welcome = process.env.WELCOME_MESSAGE;
+    const welcome = config.welcomeMessage;
     if (!welcome) return;
     const text = welcome.replace('{user}', update.participants.map(p => `@${p.split('@')[0]}`).join(', '));
     await sock.sendMessage(update.id, { text, mentions: update.participants }).catch(err => logger.warn(err));
