@@ -13,6 +13,7 @@ const brandSettings = require('../plugins/brand-settings');
 const health = require('../plugins/health');
 const maintenance = require('../plugins/maintenance');
 const { getText, handleMessage, commands: allCommands } = require('../lib/handler');
+const { dispatchUpsert } = require('../lib/message-dispatcher');
 const root = path.join(__dirname, '..');
 
 test('plugin registry loads unique command names and describes all available modules', () => {
@@ -181,6 +182,7 @@ test('handler exposes plugin commands in menu/help while preserving existing dep
   assert.match(template, /^AUTO_ANTI_DELETE=true$/m);
   assert.match(template, /^AUTO_SET_BOT_PROFILE=true$/m);
   assert.match(template, /^STATUS_LIKE_EMOJI=❤️$/m);
+  assert.match(template, /^STATUS_LIKE_EMOJIS=❤️,🥰,🌺,💕,💥,🙏,🔥,💯,💘,💖$/m);
   assert.match(template, /^MANUS_API_KEY=$/m);
 });
 
@@ -199,6 +201,32 @@ test('handler processes prefixed self-chat commands but ignores ordinary outgoin
   assert.match(sent[1].payload.text, /BRITECH MD/);
   assert.match(sent[2].payload.text, /Pong!/);
   assert.ok(sent.every(item => item.chat === chat));
+});
+
+test('dispatcher replies to .menu sent from the linked account as an appended ephemeral message', async () => {
+  const sent = [];
+  const sock = { async sendMessage(chat, payload) { sent.push({ chat, payload }); } };
+  const chat = '230451234996367@lid';
+  await dispatchUpsert(sock, [{
+    key: { remoteJid: chat, fromMe: true },
+    message: { ephemeralMessage: { message: { conversation: '.menu' } } },
+    messageTimestamp: Math.floor(Date.now() / 1000)
+  }], 'append');
+  assert.equal(sent.length, 2);
+  assert.match(sent[0].payload.caption, /BRITECH MD/);
+  assert.match(sent[1].payload.text, /GENERAL/);
+});
+
+test('menu text still replies when avatar media sending fails', async () => {
+  const sent = [];
+  const sock = { async sendMessage(chat, payload) {
+    if (payload.image) throw new Error('test avatar transport failure');
+    sent.push({ chat, payload });
+  } };
+  const message = { key: { remoteJid: '254700000004@s.whatsapp.net', fromMe: false }, message: { ephemeralMessage: { message: { conversation: '.menu' } } } };
+  await handleMessage(sock, message);
+  assert.equal(sent.length, 1);
+  assert.match(sent[0].payload.text, /BRITECH MD/);
 });
 
 

@@ -10,7 +10,7 @@ test('status viewing and liking are enabled by default with configured emoji cho
   assert.equal(config.autoViewStatus, true);
   assert.equal(config.autoLikeStatus, true);
   assert.equal(config.statusLikeEmoji, '❤️');
-  assert.deepEqual(config.statusLikeEmojis, ['❤️', '🥰', '🌺', '💕', '💥', '🙏', '🔥']);
+  assert.deepEqual(config.statusLikeEmojis, ['❤️', '🥰', '🌺', '💕', '💥', '🙏', '🔥', '💯', '💘', '💖']);
 });
 
 test('incoming contact status is marked read and reacted to with Baileys statusJidList routing', async () => {
@@ -39,15 +39,14 @@ test('incoming contact status is marked read and reacted to with Baileys statusJ
   assert.equal(reads.length, 1, 'a successfully viewed status should not be sent repeatedly');
 });
 
-test('status emoji choice is deterministic per status and supports legacy single-emoji config', () => {
+test('status emojis are randomly selectable from the expanded list and supports legacy config', () => {
   const key = { participant: '254700000011@s.whatsapp.net', id: 'emoji-choice-test' };
-  const choices = ['❤️', '🥰', '🌺', '💕', '💥', '🙏', '🔥'];
-  const selected = selectStatusEmoji(key, { statusLikeEmojis: choices });
-  assert.ok(choices.includes(selected));
-  assert.equal(selectStatusEmoji(key, { statusLikeEmojis: choices }), selected);
-  const represented = new Set(Array.from({ length: 250 }, (_, index) => selectStatusEmoji({ ...key, id: `emoji-choice-${index}` }, { statusLikeEmojis: choices })));
-  assert.deepEqual(represented, new Set(choices), 'status IDs should rotate through all configured emoji choices');
-  assert.equal(selectStatusEmoji(key, { statusLikeEmoji: '🌺' }), '🌺');
+  const choices = config.statusLikeEmojis;
+  let next = 0;
+  const represented = new Set(choices.map(() => selectStatusEmoji(key, { statusLikeEmojis: choices }, max => next++ % max)));
+  assert.deepEqual(represented, new Set(choices), 'random selection must permit each configured emoji');
+  assert.equal(selectStatusEmoji(key, { statusLikeEmojis: ['💯', '🥰', '🥰'] }, () => 1), '🥰');
+  assert.equal(selectStatusEmoji(key, { statusLikeEmoji: '🌺' }, () => 0), '🌺');
   assert.equal(selectStatusEmoji(key, { statusLikeEmojis: [] }), '❤️');
 });
 
@@ -97,20 +96,26 @@ test('failed automatic status viewing retries on a later event and deduplicates 
   assert.equal(readCount, 2);
 });
 
-test('upsert dispatcher routes only live status notifications to status actions', async () => {
+test('upsert dispatcher handles statuses and live commands, including owner self-chat append commands', async () => {
   const calls = [];
   const sock = {};
   const handlers = {
-    async handleMessage(_sock, msg) { calls.push(['command', msg.key.remoteJid]); },
+    async handleMessage(_sock, msg) { calls.push(['command', msg.key.remoteJid, msg.message?.conversation || '']); },
     async handleStatusMessage(_sock, msg) { calls.push(['status', msg.key.id]); }
   };
   await dispatchUpsert(sock, [
     { key: { remoteJid: STATUS_JID, id: 'status-a' } },
-    { key: { remoteJid: '254700000001@s.whatsapp.net' } }
+    { key: { remoteJid: '254700000001@s.whatsapp.net' }, message: { conversation: '.menu' } }
   ], 'notify', {}, silentLogger, handlers);
-  await dispatchUpsert(sock, [{ key: { remoteJid: STATUS_JID, id: 'old-status' } }], 'append', {}, silentLogger, handlers);
-  await dispatchUpsert(sock, [{ key: { remoteJid: '254700000002@s.whatsapp.net' } }], 'append', {}, silentLogger, handlers);
-  assert.deepEqual(calls, [['status', 'status-a'], ['command', '254700000001@s.whatsapp.net'], ['status', 'old-status']]);
+  await dispatchUpsert(sock, [
+    { key: { remoteJid: STATUS_JID, id: 'old-status' } },
+    { key: { remoteJid: '254700000002@s.whatsapp.net', fromMe: false }, message: { conversation: '.menu' } },
+    { key: { remoteJid: '254700000099@s.whatsapp.net', fromMe: true }, message: { conversation: '.menu' } }
+  ], 'append', {}, silentLogger, handlers);
+  assert.deepEqual(calls, [
+    ['status', 'status-a'], ['command', '254700000001@s.whatsapp.net', '.menu'],
+    ['status', 'old-status'], ['command', '254700000099@s.whatsapp.net', '.menu']
+  ]);
 });
 
 test('slow automatic status handling does not serialize command replies in the same upsert batch', async () => {
