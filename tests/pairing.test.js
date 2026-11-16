@@ -19,20 +19,27 @@ const sessionIdLoader = require(path.join(root, 'lib/session-id'));
 test('pairing dashboard has separate phone and code displays with a code-copy action', () => {
   assert.match(dashboard, /id="pairedPhone"/);
   assert.match(dashboard, /id="code"/);
-  assert.match(dashboard, /id="copy"[^>]*>⧉ Copy code/);
+  assert.match(dashboard, /id="copy"[^>]*>[\s\S]*?Copy code/);
   assert.match(dashboard, /navigator\.clipboard\.writeText\(code\)/);
   assert.match(server, /phone: pairingPhone, code: pairingCode/);
 });
 
-test('pairing page has a responsive Keith-inspired connect panel and clear three-step guide', () => {
-  assert.match(dashboard, /Pair your device/);
-  assert.match(dashboard, /Connect your device/);
-  assert.match(dashboard, /How to link/);
+test('pairing page has a responsive Orbit-inspired pairing dashboard and clear six-step guide', () => {
+  assert.match(dashboard, /Your mini bot/);
+  assert.match(dashboard, /Link your WhatsApp/);
+  assert.match(dashboard, /HOW IT WORKS/);
   assert.match(dashboard, /Link with phone number instead/);
-  assert.match(dashboard, /SESSION_ID to the paired number.s WhatsApp DM/);
-  assert.match(dashboard, /@media \(max-width: 720px\)/);
+  assert.match(dashboard, /SESSION_ID delivery/);
+  assert.match(dashboard, /paired number.s WhatsApp DM/);
+  assert.match(dashboard, /@media \(max-width: 700px\)/);
   assert.match(dashboard, /id="generate"/);
   assert.match(dashboard, /id="statusText"/);
+  assert.match(dashboard, /fetch\(path/);
+  assert.match(dashboard, /api\('\/api\/pair\/start'/);
+  assert.match(dashboard, /api\('\/api\/pair\/status'/);
+  assert.match(dashboard, /Authorization': `Bearer \$\{token\(\)\}`/);
+  assert.match(dashboard, /not saved by this page/i);
+  assert.match(dashboard, /\.menu/);
 });
 
 test('session sender verifies the target number through the full paired identity', () => {

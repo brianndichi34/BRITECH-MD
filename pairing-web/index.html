@@ -3,173 +3,234 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#070d27">
-  <meta name="description" content="Securely pair your WhatsApp device with BRITECH MD using a one-time code.">
-  <title>BRITECH MD Pairing</title>
+  <meta name="theme-color" content="#f6f7ff">
+  <meta name="description" content="Link your WhatsApp number to BRITECH MD with a secure one-time pairing code.">
+  <title>BRITECH MD · Device pairing</title>
   <style>
     :root {
-      color-scheme: dark;
-      --bg: #070d27;
-      --surface: rgba(13, 31, 79, .92);
-      --surface-raised: rgba(18, 47, 112, .9);
-      --line: rgba(86, 153, 255, .32);
-      --blue: #168cff;
-      --blue-bright: #31b5ff;
-      --cyan: #79e7ff;
-      --text: #f3f7ff;
-      --muted: #a9b8d7;
-      --good: #64e5c3;
-      --shadow: 0 24px 75px rgba(0, 0, 0, .38);
+      color-scheme: light;
+      --ink: #172140;
+      --muted: #697391;
+      --subtle: #8b94ac;
+      --paper: #f7f8fd;
+      --white: #fff;
+      --line: #e7e9f2;
+      --violet: #7255f7;
+      --violet-dark: #583de0;
+      --blue: #4b85f6;
+      --mint: #39c9a5;
+      --shadow: 0 22px 60px rgba(37, 47, 90, .10);
+      --small-shadow: 0 10px 30px rgba(37, 47, 90, .07);
     }
     * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     body {
+      min-width: 320px;
       min-height: 100vh;
       margin: 0;
-      padding: 28px 18px 22px;
-      color: var(--text);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
       background:
-        radial-gradient(ellipse at 78% 6%, rgba(27, 112, 255, .34), transparent 32rem),
-        radial-gradient(ellipse at 18% 78%, rgba(7, 107, 220, .22), transparent 30rem),
-        radial-gradient(rgba(175, 208, 255, .2) .8px, transparent .9px) 0 0 / 31px 31px,
-        linear-gradient(145deg, #11194b 0%, var(--bg) 54%, #071b48 100%);
+        radial-gradient(ellipse at 93% 7%, rgba(193, 181, 255, .42), transparent 30rem),
+        radial-gradient(ellipse at 5% 45%, rgba(204, 225, 255, .44), transparent 29rem),
+        linear-gradient(180deg, #f8f9ff, #f5f6fb 62%, #fafaff);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
-    .page { width: min(100%, 1040px); margin: 0 auto; }
-    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 0 auto 18px; }
-    .brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
-    .brand-mark { display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid rgba(114, 204, 255, .48); border-radius: 14px; color: #fff; background: linear-gradient(145deg, #168cff, #5a5bff); box-shadow: 0 0 24px rgba(29, 143, 255, .33); font-size: 1.12rem; font-weight: 900; }
-    .brand-name { font-size: .98rem; font-weight: 800; letter-spacing: .04em; }
-    .brand-caption { margin-top: 2px; color: var(--muted); font-size: .76rem; }
-    .secure-badge { display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto; padding: 8px 11px; border: 1px solid rgba(100, 229, 195, .24); border-radius: 999px; color: #b9f6e7; background: rgba(27, 115, 117, .18); font-size: .75rem; font-weight: 750; letter-spacing: .03em; }
-    .secure-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--good); box-shadow: 0 0 12px var(--good); }
-    .hero, .card { border: 1px solid var(--line); border-radius: 23px; background: linear-gradient(135deg, rgba(17, 43, 106, .96), rgba(9, 24, 68, .94)); box-shadow: var(--shadow); }
-    .hero { position: relative; overflow: hidden; display: flex; align-items: center; justify-content: space-between; gap: 26px; min-height: 168px; margin-bottom: 17px; padding: clamp(24px, 5vw, 40px); }
-    .hero::after { position: absolute; top: -74px; right: 8%; width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(circle, rgba(64, 166, 255, .46), rgba(36, 90, 215, .13) 37%, transparent 70%); content: ""; pointer-events: none; }
-    .hero-copy { position: relative; z-index: 1; max-width: 640px; }
-    .eyebrow { margin: 0 0 9px; color: var(--cyan); font-size: .76rem; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
-    h1 { margin: 0; font-size: clamp(1.8rem, 5vw, 2.65rem); line-height: 1.1; letter-spacing: -.035em; }
-    .hero p:last-child { margin: 11px 0 0; color: var(--muted); font-size: .97rem; line-height: 1.55; }
-    .hero-orbit { position: relative; z-index: 1; display: grid; width: 96px; height: 96px; flex: 0 0 auto; place-items: center; border: 1px solid rgba(85, 184, 255, .48); border-radius: 50%; color: #a8eaff; background: radial-gradient(circle, rgba(50, 143, 255, .22), rgba(13, 40, 111, .18) 65%); box-shadow: 0 0 32px rgba(31, 129, 255, .24), inset 0 0 24px rgba(49, 181, 255, .12); font-size: 2.2rem; }
-    .hero-orbit::before, .hero-orbit::after { position: absolute; width: 148%; height: 53%; border: 1.5px solid rgba(105, 255, 130, .74); border-radius: 50%; box-shadow: 0 0 13px rgba(62, 255, 117, .38), inset 0 0 8px rgba(62, 255, 117, .13); content: ""; transform: rotate(-28deg); animation: orbit-glow 8s ease-in-out infinite; pointer-events: none; }
-    .hero-orbit::after { width: 170%; height: 69%; border-color: rgba(63, 191, 255, .56); box-shadow: 0 0 15px rgba(49, 153, 255, .28); animation-delay: -4s; animation-duration: 11s; }
-    @keyframes orbit-glow { 0%, 100% { transform: rotate(-28deg) scale(.96); filter: hue-rotate(0deg); opacity: .72; } 50% { transform: rotate(28deg) scale(1.04); filter: hue-rotate(22deg); opacity: 1; } }
-    .content { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(290px, .88fr); gap: 16px; align-items: stretch; }
-    .card { padding: clamp(20px, 4vw, 30px); }
-    .card-heading { margin: 0; font-size: 1.13rem; font-weight: 800; }
-    .card-subtitle { margin: 5px 0 18px; color: var(--muted); font-size: .86rem; line-height: 1.45; }
-    .mode-chip { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 20px; padding: 9px 12px; border: 1px solid rgba(83, 164, 255, .46); border-radius: 11px; color: #eaf5ff; background: rgba(19, 101, 219, .2); font-size: .82rem; font-weight: 800; }
-    .mode-chip small { color: var(--cyan); font-size: .7rem; font-weight: 700; }
-    label { display: block; margin: 16px 0 7px; color: #dce7ff; font-size: .84rem; font-weight: 750; }
-    input { display: block; width: 100%; min-height: 48px; padding: 12px 14px; border: 1px solid rgba(126, 164, 226, .3); border-radius: 12px; outline: none; color: var(--text); background: rgba(4, 12, 37, .65); font: inherit; font-size: .97rem; transition: border-color .15s ease, box-shadow .15s ease; }
-    input::placeholder { color: #7383a8; }
-    input:focus { border-color: var(--blue-bright); box-shadow: 0 0 0 3px rgba(49, 181, 255, .15); }
-    .field-hint { margin: 7px 0 0; color: var(--muted); font-size: .77rem; line-height: 1.45; }
-    button { width: 100%; min-height: 48px; margin-top: 17px; padding: 12px 16px; border: 1px solid rgba(93, 201, 255, .6); border-radius: 12px; color: white; background: linear-gradient(100deg, #1276ef, #2560eb 55%, #4c5df3); box-shadow: 0 8px 24px rgba(22, 118, 239, .22); font: inherit; font-size: .95rem; font-weight: 850; cursor: pointer; transition: filter .15s ease, transform .15s ease; }
-    button:hover:not(:disabled) { filter: brightness(1.12); transform: translateY(-1px); }
-    button:focus-visible { outline: 3px solid var(--cyan); outline-offset: 3px; }
-    button:disabled { opacity: .6; cursor: wait; }
-    .result { margin-top: 17px; }
+    a { color: inherit; }
+    button, input { font: inherit; }
+    .shell { width: min(1180px, calc(100% - 44px)); margin: 0 auto; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 23px 0; }
+    .brand { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; }
+    .brand-symbol { position: relative; display: grid; width: 42px; height: 42px; place-items: center; overflow: hidden; border-radius: 14px; color: white; background: linear-gradient(140deg, #846cff 5%, #5b8cf5 55%, #55d5c1); box-shadow: 0 8px 20px rgba(105, 87, 237, .27); font-size: 1rem; font-weight: 950; letter-spacing: -.08em; }
+    .brand-symbol::after { position: absolute; width: 31px; height: 12px; border: 1.5px solid rgba(255,255,255,.74); border-radius: 50%; content: ""; transform: rotate(-28deg); }
+    .brand-copy { display: grid; gap: 2px; }
+    .brand-name { font-size: .94rem; font-weight: 900; letter-spacing: .055em; }
+    .brand-caption { color: var(--muted); font-size: .72rem; }
+    .top-actions { display: flex; align-items: center; gap: 11px; }
+    .top-link { color: var(--muted); font-size: .82rem; font-weight: 700; text-decoration: none; }
+    .top-link:hover { color: var(--violet-dark); }
+    .secure-badge { display: inline-flex; align-items: center; gap: 8px; padding: 9px 13px; border: 1px solid #d8f1e9; border-radius: 999px; color: #167a65; background: rgba(255,255,255,.8); font-size: .75rem; font-weight: 800; white-space: nowrap; }
+    .secure-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 0 4px rgba(57,201,165,.12); }
+    .hero { position: relative; display: grid; grid-template-columns: minmax(0, 1.03fr) minmax(340px, .87fr); gap: clamp(28px, 5vw, 74px); align-items: center; min-height: 500px; padding: 52px clamp(24px, 6vw, 76px); overflow: hidden; border: 1px solid rgba(227,229,246,.92); border-radius: 34px; background: rgba(255,255,255,.84); box-shadow: var(--shadow); }
+    .hero::before { position: absolute; right: -120px; top: -140px; width: 530px; height: 530px; border: 1px solid rgba(127,107,248,.12); border-radius: 50%; box-shadow: 0 0 0 36px rgba(127,107,248,.035), 0 0 0 76px rgba(89,150,248,.035); content: ""; pointer-events: none; }
+    .hero::after { position: absolute; right: 6%; top: 8%; width: 300px; height: 120px; border: 1px solid rgba(127,107,248,.13); border-radius: 50%; content: ""; transform: rotate(-27deg); pointer-events: none; }
+    .hero-copy { position: relative; z-index: 1; max-width: 545px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 9px; margin: 0 0 19px; color: var(--violet-dark); font-size: .71rem; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; }
+    .eyebrow::before { width: 21px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, var(--violet), var(--blue)); content: ""; }
+    h1 { max-width: 570px; margin: 0; font-size: clamp(2.65rem, 5.6vw, 4.55rem); font-weight: 900; letter-spacing: -.075em; line-height: .99; }
+    .gradient-word { color: transparent; background: linear-gradient(100deg, #7255f7 3%, #588cf3 58%, #33bdad); -webkit-background-clip: text; background-clip: text; }
+    .hero-description { max-width: 445px; margin: 21px 0 25px; color: var(--muted); font-size: 1.02rem; line-height: 1.7; }
+    .hero-description strong { color: var(--ink); font-weight: 800; }
+    .hero-points { display: flex; flex-wrap: wrap; gap: 10px 18px; margin: 0; padding: 0; list-style: none; }
+    .hero-points li { display: inline-flex; align-items: center; gap: 7px; color: #45506d; font-size: .8rem; font-weight: 760; }
+    .tick { display: grid; width: 18px; height: 18px; place-items: center; border-radius: 50%; color: #218b70; background: #e5f8f1; font-size: .69rem; font-weight: 950; }
+    .pair-card { position: relative; z-index: 1; padding: clamp(22px, 3.1vw, 32px); border: 1px solid rgba(231,233,242,.95); border-radius: 25px; background: rgba(255,255,255,.97); box-shadow: 0 20px 54px rgba(48, 56, 105, .13); }
+    .card-kicker { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+    .card-step { color: var(--violet-dark); font-size: .7rem; font-weight: 900; letter-spacing: .11em; }
+    .ready-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 9px; border-radius: 999px; color: #23806c; background: #e9f9f4; font-size: .68rem; font-weight: 850; }
+    .ready-chip::before { width: 6px; height: 6px; border-radius: 50%; background: #35bf9d; content: ""; }
+    .pair-card h2 { margin: 0; font-size: 1.36rem; font-weight: 900; letter-spacing: -.035em; }
+    .card-intro { margin: 7px 0 17px; color: var(--muted); font-size: .83rem; line-height: 1.55; }
+    .token-field { margin-bottom: 13px; }
+    label { display: block; margin: 0 0 7px; color: #3d4762; font-size: .76rem; font-weight: 850; }
+    .input-wrap { position: relative; }
+    input { display: block; width: 100%; height: 48px; padding: 0 14px; border: 1px solid #e2e5ef; border-radius: 12px; outline: none; color: var(--ink); background: #fbfcff; font-size: .9rem; transition: border-color .16s ease, box-shadow .16s ease, background .16s ease; }
+    input::placeholder { color: #a0a8bc; }
+    input:focus { border-color: #907af9; background: white; box-shadow: 0 0 0 4px rgba(114,85,247,.11); }
+    .hint { margin: 6px 0 0; color: var(--subtle); font-size: .71rem; line-height: 1.45; }
+    .generate { display: flex; width: 100%; min-height: 50px; align-items: center; justify-content: center; gap: 10px; margin-top: 18px; padding: 12px 18px; border: 0; border-radius: 13px; color: white; background: linear-gradient(100deg, #7457f5, #5a7ff4 65%, #4b9fe8); box-shadow: 0 10px 22px rgba(99,94,239,.25); font-size: .88rem; font-weight: 900; cursor: pointer; transition: transform .16s ease, box-shadow .16s ease, opacity .16s ease; }
+    .generate:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 14px 26px rgba(99,94,239,.31); }
+    .generate:focus-visible, .copy-button:focus-visible { outline: 3px solid #b7a9ff; outline-offset: 3px; }
+    .generate:disabled { opacity: .64; cursor: wait; }
+    .arrow { font-size: 1.1rem; line-height: 1; }
+    .result { display: grid; gap: 10px; margin-top: 16px; }
     .hidden { display: none !important; }
-    .display { padding: 13px 15px; border: 1px solid rgba(91, 154, 234, .3); border-radius: 12px; background: rgba(4, 12, 37, .5); }
-    .display + .display { margin-top: 11px; }
-    .display-label { display: block; color: #9eb4dc; font-size: .72rem; font-weight: 800; letter-spacing: .08em; }
-    .display-value { display: block; margin-top: 6px; overflow-wrap: anywhere; color: var(--cyan); font-size: 1.05rem; font-weight: 850; }
-    .code-box { margin-top: 12px; padding: 17px 15px 15px; border: 1px solid rgba(48, 159, 255, .58); border-radius: 15px; text-align: center; background: radial-gradient(ellipse at top, rgba(25, 119, 233, .2), rgba(4, 12, 37, .68) 72%); }
-    .code-box .display-label { color: #bbd8ff; }
-    .code-value { display: block; min-height: 1.35em; margin: 8px 0 4px; color: white; font-size: clamp(1.8rem, 8vw, 2.6rem); font-weight: 900; letter-spacing: .16em; line-height: 1.2; overflow-wrap: anywhere; text-shadow: 0 0 20px rgba(68, 180, 255, .55); }
-    .copy-button { width: auto; min-width: 148px; min-height: 40px; margin-top: 7px; padding: 9px 15px; border-color: rgba(91, 175, 255, .4); background: rgba(18, 67, 150, .58); box-shadow: none; font-size: .84rem; }
-    .status { display: flex; align-items: flex-start; gap: 10px; min-height: 48px; margin-top: 16px; padding: 12px 13px; border: 1px solid rgba(91, 154, 234, .22); border-radius: 12px; color: #ccdaef; background: rgba(4, 12, 37, .5); font-size: .84rem; line-height: 1.5; }
-    .status-mark { width: 8px; height: 8px; flex: 0 0 auto; margin-top: 5px; border-radius: 50%; background: #57b9ff; box-shadow: 0 0 10px #258cff; }
-    .warning { margin: 13px 0 0; color: #adbad4; font-size: .76rem; line-height: 1.5; }
-    .steps { display: grid; gap: 16px; margin: 19px 0 0; padding: 0; list-style: none; }
-    .step { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 11px; align-items: start; color: #dce7fa; font-size: .87rem; line-height: 1.5; }
-    .step-number { display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid rgba(105, 196, 255, .45); border-radius: 50%; color: white; background: linear-gradient(145deg, #168cff, #4665ec); font-size: .77rem; font-weight: 900; box-shadow: 0 0 16px rgba(31, 129, 255, .22); }
-    .step strong { color: white; }
-    .delivery-note { margin-top: 22px; padding: 13px 14px; border: 1px solid rgba(100, 229, 195, .25); border-radius: 12px; color: #c4e9df; background: rgba(17, 103, 100, .14); font-size: .8rem; line-height: 1.5; }
-    .delivery-note strong { color: #a8f1dc; }
-    .footer { padding: 18px 8px 4px; color: #8595b5; text-align: center; font-size: .76rem; }
-    @media (max-width: 720px) {
-      body { padding: 17px 14px 20px; }
-      .hero { min-height: 146px; }
-      .hero-orbit { width: 72px; height: 72px; font-size: 1.8rem; }
-      .content { grid-template-columns: 1fr; }
-      .steps { gap: 14px; }
+    .result-phone { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 13px; border: 1px solid #e9eaf3; border-radius: 13px; background: #fafaff; }
+    .result-label { display: block; color: var(--subtle); font-size: .63rem; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+    .result-number { display: block; margin-top: 4px; color: var(--ink); font-size: .89rem; font-weight: 850; }
+    .code-panel { padding: 15px; border: 1px solid #e9e4ff; border-radius: 15px; text-align: center; background: linear-gradient(145deg, #faf9ff, #f3f8ff); }
+    .code-panel .result-label { color: #6f63bd; }
+    .code-value { display: block; min-height: 1.35em; margin: 9px 0 11px; color: #4934c6; font-size: clamp(1.85rem, 8vw, 2.35rem); font-weight: 950; letter-spacing: .19em; line-height: 1.15; overflow-wrap: anywhere; }
+    .copy-button { display: inline-flex; min-height: 38px; align-items: center; justify-content: center; gap: 7px; padding: 8px 15px; border: 1px solid #ded8ff; border-radius: 10px; color: #5846c9; background: white; font-size: .77rem; font-weight: 850; cursor: pointer; }
+    .status { display: flex; align-items: flex-start; gap: 9px; margin-top: 15px; padding: 11px 12px; border: 1px solid #e9eaf3; border-radius: 12px; color: #59627b; background: #fafbff; font-size: .76rem; line-height: 1.5; }
+    .status-mark { width: 7px; height: 7px; flex: 0 0 auto; margin-top: 5px; border-radius: 50%; background: #8c79f6; box-shadow: 0 0 0 4px rgba(140,121,246,.12); }
+    .token-warning { display: flex; gap: 9px; margin: 12px 0 0; color: #78819a; font-size: .69rem; line-height: 1.5; }
+    .lock { flex: 0 0 auto; color: #6a59da; }
+    .below { display: grid; grid-template-columns: 1.1fr .9fr; gap: 18px; margin: 20px 0 36px; }
+    .info-card { padding: clamp(22px, 3.7vw, 34px); border: 1px solid rgba(229,231,241,.95); border-radius: 24px; background: rgba(255,255,255,.78); box-shadow: var(--small-shadow); }
+    .section-kicker { margin: 0 0 8px; color: var(--violet-dark); font-size: .67rem; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+    .info-card h2 { margin: 0; font-size: 1.32rem; font-weight: 900; letter-spacing: -.04em; }
+    .section-subtitle { margin: 7px 0 0; color: var(--muted); font-size: .8rem; line-height: 1.55; }
+    .steps { display: grid; gap: 15px; margin: 22px 0 0; padding: 0; list-style: none; }
+    .step { display: grid; grid-template-columns: 32px minmax(0,1fr); gap: 11px; align-items: start; }
+    .step-number { display: grid; width: 29px; height: 29px; place-items: center; border: 1px solid #e5e0ff; border-radius: 10px; color: #604ce0; background: #f2efff; font-size: .72rem; font-weight: 950; }
+    .step-copy { color: var(--muted); font-size: .77rem; line-height: 1.52; }
+    .step-copy strong { color: #303a58; }
+    .feature-list { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin-top: 20px; }
+    .feature { display: flex; min-height: 61px; align-items: center; gap: 10px; padding: 11px; border: 1px solid #ececf5; border-radius: 14px; background: rgba(255,255,255,.78); }
+    .feature-icon { display: grid; width: 33px; height: 33px; flex: 0 0 auto; place-items: center; border-radius: 11px; color: #6654db; background: #f0edff; font-size: .95rem; }
+    .feature strong { display: block; color: #323c58; font-size: .73rem; font-weight: 850; }
+    .feature small { display: block; margin-top: 3px; color: var(--subtle); font-size: .65rem; line-height: 1.35; }
+    .delivery { margin-top: 15px; padding: 13px 14px; border: 1px solid #dff2eb; border-radius: 14px; color: #47756b; background: #f2fbf7; font-size: .74rem; line-height: 1.55; }
+    .delivery strong { color: #1c745f; }
+    .footer { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 0 2px 24px; color: #8a91a7; font-size: .7rem; }
+    .footer strong { color: #59627b; }
+    .footer-note { text-align: right; }
+    @media (max-width: 880px) {
+      .hero { grid-template-columns: minmax(0,1fr) minmax(315px,.95fr); gap: 25px; min-height: 455px; padding: 39px 34px; }
+      .below { grid-template-columns: 1fr; }
     }
-    @media (max-width: 420px) {
-      .secure-badge { padding: 7px 9px; font-size: .68rem; }
-      .brand-mark { width: 38px; height: 38px; }
-      .brand-name { font-size: .9rem; }
-      .hero { gap: 10px; padding: 22px 19px; }
-      .hero-orbit { width: 58px; height: 58px; font-size: 1.45rem; }
-      .card { padding: 19px 16px; }
+    @media (max-width: 700px) {
+      .shell { width: min(100% - 28px, 540px); }
+      .topbar { padding: 16px 0; }
+      .top-link { display: none; }
+      .hero { grid-template-columns: 1fr; gap: 23px; min-height: auto; padding: 30px 19px 20px; border-radius: 25px; }
+      .hero::before { right: -240px; top: -210px; width: 480px; height: 480px; }
+      .hero::after { right: -17%; top: 9%; width: 210px; }
+      .hero-copy { padding: 2px 2px 0; }
+      h1 { font-size: clamp(2.55rem, 12vw, 3.7rem); }
+      .hero-description { margin: 15px 0 18px; font-size: .9rem; }
+      .hero-points { gap: 8px 13px; }
+      .hero-points li { font-size: .72rem; }
+      .pair-card { padding: 22px 17px; border-radius: 20px; }
+      .below { gap: 13px; margin-top: 14px; }
+      .info-card { padding: 22px 18px; border-radius: 20px; }
+      .footer { align-items: flex-start; flex-direction: column; padding-bottom: 18px; }
+      .footer-note { text-align: left; }
     }
-    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
+    @media (max-width: 380px) {
+      .secure-badge { padding: 8px 10px; font-size: .68rem; }
+      .brand-caption { font-size: .66rem; }
+      .feature-list { grid-template-columns: 1fr; }
+      .hero-points { display: grid; grid-template-columns: 1fr 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+    }
   </style>
 </head>
 <body>
-  <main class="page">
+  <main class="shell">
     <header class="topbar">
-      <div class="brand" aria-label="BRITECH MD pairing">
-        <div class="brand-mark" aria-hidden="true">B</div>
-        <div><div class="brand-name">BRITECH MD</div><div class="brand-caption">WhatsApp pairing centre</div></div>
-      </div>
-      <div class="secure-badge"><span class="secure-dot" aria-hidden="true"></span> SECURE PAIRING</div>
+      <a class="brand" href="#top" aria-label="BRITECH MD pairing home">
+        <span class="brand-symbol" aria-hidden="true">B</span>
+        <span class="brand-copy"><span class="brand-name">BRITECH MD</span><span class="brand-caption">WhatsApp mini bot</span></span>
+      </a>
+      <nav class="top-actions" aria-label="Page navigation">
+        <a class="top-link" href="#how-it-works">How it works</a>
+        <span class="secure-badge"><span class="secure-dot" aria-hidden="true"></span> PRIVATE PAIRING</span>
+      </nav>
     </header>
 
-    <section class="hero" aria-labelledby="page-title">
+    <section class="hero" id="top" aria-labelledby="page-title">
       <div class="hero-copy">
-        <p class="eyebrow">WhatsApp · Link a device</p>
-        <h1 id="page-title">Pair your device</h1>
-        <p>Connect your WhatsApp account to BRITECH MD with a one-time pairing code.</p>
+        <p class="eyebrow">BRAND NEW · READY TO LINK</p>
+        <h1 id="page-title">Your mini bot.<br><span class="gradient-word">Ready to link.</span></h1>
+        <p class="hero-description">Connect your WhatsApp number to <strong>BRITECH MD</strong>, then open WhatsApp and enter your one-time pairing code. No complicated setup.</p>
+        <ul class="hero-points" aria-label="BRITECH MD highlights">
+          <li><span class="tick" aria-hidden="true">✓</span> Phone-friendly setup</li>
+          <li><span class="tick" aria-hidden="true">✓</span> One-time code</li>
+          <li><span class="tick" aria-hidden="true">✓</span> Copyable SESSION_ID</li>
+        </ul>
       </div>
-      <div class="hero-orbit" aria-hidden="true">⌁</div>
-    </section>
 
-    <div class="content">
-      <section class="card" aria-labelledby="connect-title">
-        <h2 class="card-heading" id="connect-title">Connect your device</h2>
-        <p class="card-subtitle">Enter the WhatsApp number you want to link.</p>
-        <div class="mode-chip" aria-label="Selected method: pairing code">🔑 Pairing Code <small>ONE-TIME CODE</small></div>
+      <section class="pair-card" aria-labelledby="connect-title">
+        <div class="card-kicker"><span class="card-step">01 / DEVICE PAIRING</span><span class="ready-chip">Service ready</span></div>
+        <h2 id="connect-title">Link your WhatsApp</h2>
+        <p class="card-intro">Enter the full number with country code. Your private access token is used only to authorize requests to this pairing service.</p>
 
-        <label for="token">Private dashboard access token</label>
-        <input id="token" type="password" autocomplete="current-password" placeholder="Enter your KataBump pairing token" aria-describedby="token-hint">
-        <p class="field-hint" id="token-hint">Use the private token configured for the pairing dashboard.</p>
-
-        <label for="phone">WhatsApp number</label>
-        <input id="phone" inputmode="numeric" autocomplete="tel" placeholder="2547XXXXXXXX" aria-describedby="phone-hint">
-        <p class="field-hint" id="phone-hint">Country code included; digits only. Example: 2547XXXXXXXX.</p>
-
-        <button id="generate" type="button">Generate Pairing Code <span aria-hidden="true">→</span></button>
+        <form id="pairingForm" novalidate>
+          <div class="token-field">
+            <label for="token">Private dashboard token</label>
+            <div class="input-wrap"><input id="token" type="password" autocomplete="off" placeholder="Enter your pairing dashboard token" aria-describedby="token-hint"></div>
+            <p class="hint" id="token-hint">Keep this token private. It is not saved by this page.</p>
+          </div>
+          <div>
+            <label for="phone">WhatsApp number</label>
+            <div class="input-wrap"><input id="phone" inputmode="numeric" autocomplete="tel" placeholder="2547XXXXXXXX" aria-describedby="phone-hint" required></div>
+            <p class="hint" id="phone-hint">Include your country code; type digits only. Example: 2547XXXXXXXX.</p>
+          </div>
+          <button id="generate" class="generate" type="submit"><span>Link my number</span><span class="arrow" aria-hidden="true">→</span></button>
+        </form>
 
         <div id="result" class="result hidden" aria-live="polite">
-          <div class="display">
-            <span class="display-label">PHONE NUMBER BEING PAIRED</span>
-            <strong id="pairedPhone" class="display-value">—</strong>
-          </div>
-          <div class="code-box">
-            <span class="display-label">YOUR ONE-TIME PAIRING CODE</span>
-            <strong id="code" class="code-value">—</strong>
-            <button id="copy" class="copy-button" type="button">⧉ Copy code</button>
-          </div>
+          <div class="result-phone"><span><span class="result-label">PHONE BEING PAIRED</span><strong id="pairedPhone" class="result-number">—</strong></span><span class="ready-chip">Waiting</span></div>
+          <div class="code-panel"><span class="result-label">YOUR ONE-TIME PAIRING CODE</span><strong id="code" class="code-value">—</strong><button id="copy" class="copy-button" type="button"><span aria-hidden="true">⧉</span> Copy code</button></div>
         </div>
-
-        <div id="status" class="status" role="status" aria-live="polite"><span class="status-mark" aria-hidden="true"></span><span id="statusText">Waiting for your request.</span></div>
-        <p class="warning">Never share your pairing code. Enter it only in WhatsApp’s Linked devices screen. This page does not write pairing codes to server logs.</p>
+        <div id="status" class="status" role="status" aria-live="polite"><span class="status-mark" aria-hidden="true"></span><span id="statusText">Ready when you are. Your code will appear here.</span></div>
+        <p class="token-warning"><span class="lock" aria-hidden="true">◆</span><span>Never share your pairing code. Enter it only in WhatsApp’s <strong>Linked Devices</strong> screen.</span></p>
       </section>
+    </section>
 
-      <aside class="card" aria-labelledby="steps-title">
-        <h2 class="card-heading" id="steps-title">How to link</h2>
-        <p class="card-subtitle">Three quick steps to connect WhatsApp.</p>
+    <section class="below" id="how-it-works" aria-label="Pairing information">
+      <article class="info-card">
+        <p class="section-kicker">HOW IT WORKS</p>
+        <h2>Six quick steps. Then you’re in.</h2>
+        <p class="section-subtitle">Keep this page open while you link your WhatsApp account.</p>
         <ol class="steps">
-          <li class="step"><span class="step-number">1</span><span><strong>Generate your code</strong> here, then copy it.</span></li>
-          <li class="step"><span class="step-number">2</span><span>Open WhatsApp → <strong>Settings → Linked Devices → Link a Device</strong>.</span></li>
-          <li class="step"><span class="step-number">3</span><span>Tap <strong>Link with phone number instead</strong>, enter the code, and confirm.</span></li>
+          <li class="step"><span class="step-number">01</span><span class="step-copy"><strong>Add your number.</strong> Enter the WhatsApp number with its country code.</span></li>
+          <li class="step"><span class="step-number">02</span><span class="step-copy"><strong>Get your code.</strong> Tap “Link my number” and wait for the one-time code to appear.</span></li>
+          <li class="step"><span class="step-number">03</span><span class="step-copy"><strong>Open WhatsApp.</strong> Go to Settings → Linked Devices → Link a Device.</span></li>
+          <li class="step"><span class="step-number">04</span><span class="step-copy"><strong>Enter the code.</strong> Choose “Link with phone number instead”, then enter the code shown above.</span></li>
+          <li class="step"><span class="step-number">05</span><span class="step-copy"><strong>Check your DM.</strong> After linking, BRITECH MD sends the SESSION_ID to the paired number.</span></li>
+          <li class="step"><span class="step-number">06</span><span class="step-copy"><strong>Explore your bot.</strong> Send <strong>.menu</strong> in WhatsApp to see the available commands.</span></li>
         </ol>
-        <div class="delivery-note"><strong>After pairing:</strong> BRITECH MD sends the SESSION_ID to the paired number’s WhatsApp DM as a Word document and copyable text. Keep it private.</div>
-      </aside>
-    </div>
+      </article>
 
-    <footer class="footer">BRITECH MD · Private device-pairing interface</footer>
+      <article class="info-card">
+        <p class="section-kicker">BRITECH MD · MINI BOT</p>
+        <h2>Small setup. Useful tools.</h2>
+        <p class="section-subtitle">Pair your number, then explore the features available in your BRITECH MD bot.</p>
+        <div class="feature-list">
+          <div class="feature"><span class="feature-icon" aria-hidden="true">◉</span><span><strong>Status tools</strong><small>Automatic viewing and emoji reactions</small></span></div>
+          <div class="feature"><span class="feature-icon" aria-hidden="true">⌁</span><span><strong>Message recovery</strong><small>Anti-delete for supported messages</small></span></div>
+          <div class="feature"><span class="feature-icon" aria-hidden="true">⌘</span><span><strong>Command menu</strong><small>Send .menu to explore commands</small></span></div>
+          <div class="feature"><span class="feature-icon" aria-hidden="true">✦</span><span><strong>Bot Doctor</strong><small>Diagnostics and safe repair guidance</small></span></div>
+        </div>
+        <div class="delivery"><strong>SESSION_ID delivery:</strong> after WhatsApp confirms the link, the bot sends the session as a Word document and copyable text to the paired number’s WhatsApp DM. Treat it like a password.</div>
+      </article>
+    </section>
+
+    <footer class="footer"><span><strong>BRITECH MD</strong> · Private device-pairing interface</span><span class="footer-note">Keep your pairing code and SESSION_ID private.</span></footer>
   </main>
 
   <script>
@@ -188,7 +249,8 @@
       return data;
     }
 
-    $('generate').addEventListener('click', async () => {
+    $('pairingForm').addEventListener('submit', async event => {
+      event.preventDefault();
       clearInterval(poller);
       const phone = $('phone').value.trim();
       if (!token()) { setStatus('Enter the private dashboard access token first.'); $('token').focus(); return; }
@@ -245,8 +307,8 @@
       const code = $('code').textContent;
       try {
         await navigator.clipboard.writeText(code);
-        $('copy').textContent = '✓ Copied';
-        setTimeout(() => { $('copy').textContent = '⧉ Copy code'; }, 1600);
+        $('copy').innerHTML = '<span aria-hidden="true">✓</span> Copied';
+        setTimeout(() => { $('copy').innerHTML = '<span aria-hidden="true">⧉</span> Copy code'; }, 1600);
       } catch {
         setStatus('Copy was blocked by your browser. Select the code and copy it manually.');
       }
