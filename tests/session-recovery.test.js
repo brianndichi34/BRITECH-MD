@@ -31,6 +31,7 @@ async function withState(run) {
 test('recognizes Baileys Bad MAC and session-cipher decryption messages', () => {
   assert.equal(isBadMacError('Error: Bad MAC'), true);
   assert.equal(isBadMacError({ message: 'No matching sessions found for message' }), true);
+  assert.equal(isBadMacError({ err: new Error('Bad MAC') }), true);
   assert.equal(isBadMacError('connection closed normally'), false);
 });
 

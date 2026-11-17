@@ -27,10 +27,10 @@ const sessionRecovery = createBadMacRecovery({
   }
 });
 logger = pino({
-  level: config.logLevel,
-  hooks: {
-    logMethod(inputArgs, method) {
-      if (config.autoSessionRecovery) sessionRecovery.observe(inputArgs);
+    level: config.logLevel,
+    hooks: {
+      logMethod(inputArgs, method) {
+      if (config.autoSessionRecovery) inputArgs.forEach(argument => sessionRecovery.observe(argument));
       method.apply(this, inputArgs);
     }
   }
