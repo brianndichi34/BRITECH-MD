@@ -8,11 +8,33 @@ const { dispatchUpsert } = require('./lib/message-dispatcher');
 const { hydrateSessionId } = require('./lib/session-id');
 const { createAntiDelete } = require('./lib/anti-delete');
 const { sendConnectionWelcome } = require('./lib/connection-welcome');
+const { createBadMacRecovery } = require('./lib/session-recovery');
 
 let stopping = false;
 let reconnectTimer;
 let profileInitialized = false;
-const logger = pino({ level: config.logLevel });
+let logger;
+const sessionRecovery = createBadMacRecovery({
+  sessionDir: path.resolve(config.sessionDir),
+  threshold: config.badMacRecoveryThreshold,
+  logger: {
+    warn(...args) { logger?.warn(...args); },
+    error(...args) { logger?.error(...args); }
+  },
+  onRecovered: async result => {
+    logger.error({ candidate: result.candidate, preserved: result.preserved }, 'Session recovery completed; restarting BRITECH MD once.');
+    setTimeout(() => process.exit(1), 750).unref();
+  }
+});
+logger = pino({
+  level: config.logLevel,
+  hooks: {
+    logMethod(inputArgs, method) {
+      if (config.autoSessionRecovery) sessionRecovery.observe(inputArgs);
+      method.apply(this, inputArgs);
+    }
+  }
+});
 const antiDelete = createAntiDelete();
 
 async function initializeBotProfile(sock) {

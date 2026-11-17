@@ -176,6 +176,7 @@ module.exports = {
         '⚡ *AUTOMATION*',
         `▫️ Auto-view status → ${status(ctx.config.autoViewStatus)}`,
         `▫️ Auto-like status → ${status(ctx.config.autoLikeStatus)}`,
+        `▫️ Command reactions → ${status(ctx.config.autoReactCommands)}`,
         `▫️ Auto-read chats → ${status(ctx.config.autoRead)}`,
         '━━━━━━━━━━━━━━━━━━━━',
         '🎨 *BRAND & AI*',

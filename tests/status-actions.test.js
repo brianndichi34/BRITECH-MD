@@ -9,8 +9,8 @@ const silentLogger = { warn() {}, error() {} };
 test('status viewing and liking are enabled by default with configured emoji choices', () => {
   assert.equal(config.autoViewStatus, true);
   assert.equal(config.autoLikeStatus, true);
-  assert.equal(config.statusLikeEmoji, '❤️');
-  assert.deepEqual(config.statusLikeEmojis, ['❤️', '🥰', '🌺', '💕', '💥', '🙏', '🔥', '💯', '💘', '💖']);
+  assert.equal(config.statusLikeEmoji, '💕');
+  assert.deepEqual(config.statusLikeEmojis, ['💕', '💞', '💖', '💯', '🥰']);
 });
 
 test('incoming contact status is marked read and reacted to with Baileys statusJidList routing', async () => {
@@ -47,7 +47,7 @@ test('status emojis are randomly selectable from the expanded list and supports 
   assert.deepEqual(represented, new Set(choices), 'random selection must permit each configured emoji');
   assert.equal(selectStatusEmoji(key, { statusLikeEmojis: ['💯', '🥰', '🥰'] }, () => 1), '🥰');
   assert.equal(selectStatusEmoji(key, { statusLikeEmoji: '🌺' }, () => 0), '🌺');
-  assert.equal(selectStatusEmoji(key, { statusLikeEmojis: [] }), '❤️');
+  assert.equal(selectStatusEmoji(key, { statusLikeEmojis: [] }), '💕');
 });
 
 test('auto-view and auto-like can be disabled independently; self and non-status messages are ignored', async () => {

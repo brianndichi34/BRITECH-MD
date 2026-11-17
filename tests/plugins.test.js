@@ -13,7 +13,7 @@ const presence = require('../plugins/presence');
 const brandSettings = require('../plugins/brand-settings');
 const health = require('../plugins/health');
 const maintenance = require('../plugins/maintenance');
-const { getText, handleMessage, askAI, commands: allCommands } = require('../lib/handler');
+const { getText, handleMessage, askAI, commands: allCommands, selectCommandEmoji } = require('../lib/handler');
 const { dispatchUpsert } = require('../lib/message-dispatcher');
 const root = path.join(__dirname, '..');
 
@@ -163,13 +163,14 @@ test('handler exposes plugin commands in menu/help while preserving existing dep
   const sent = [];
   const sock = { async sendMessage(chat, payload) { sent.push({ chat, payload }); } };
   await handleMessage(sock, { key: { remoteJid: '254700000001@s.whatsapp.net', fromMe: false }, message: { conversation: '.menu' }, messageTimestamp: Math.floor(Date.now() / 1000) });
-  assert.equal(sent[0].payload.image.length > 100, true, 'menu should use the generated branded avatar');
-  assert.match(sent[0].payload.caption, /BRITECH MD/);
-  assert.match(sent[1].payload.text, /\.sticker/);
-  assert.match(sent[1].payload.text, /\.poll/);
-  for (const command of Object.keys(allCommands)) assert.ok(sent[1].payload.text.includes(`.${command}`), `menu must list .${command}`);
+  assert.ok(sent[0].payload.react, 'menu should be acknowledged with a reaction');
+  assert.equal(sent[1].payload.image.length > 100, true, 'menu should use the generated branded avatar');
+  assert.match(sent[1].payload.caption, /BRITECH MD/);
+  assert.match(sent[2].payload.text, /\.sticker/);
+  assert.match(sent[2].payload.text, /\.poll/);
+  for (const command of Object.keys(allCommands)) assert.ok(sent[2].payload.text.includes(`.${command}`), `menu must list .${command}`);
   await handleMessage(sock, { key: { remoteJid: '254700000002@s.whatsapp.net', fromMe: false }, message: { conversation: '.help revoke' } });
-  assert.match(sent[2].payload.text, /Renew the group invite link/);
+  assert.match(sent[4].payload.text, /Renew the group invite link/);
   const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
   assert.equal(packageJson.scripts.start, 'node index.js');
   assert.ok(packageJson.dependencies.sharp && packageJson.dependencies.qrcode);
@@ -182,8 +183,10 @@ test('handler exposes plugin commands in menu/help while preserving existing dep
   assert.match(template, /^AUTO_LIKE_STATUS=true$/m);
   assert.match(template, /^AUTO_ANTI_DELETE=true$/m);
   assert.match(template, /^AUTO_SET_BOT_PROFILE=true$/m);
-  assert.match(template, /^STATUS_LIKE_EMOJI=❤️$/m);
-  assert.match(template, /^STATUS_LIKE_EMOJIS=❤️,🥰,🌺,💕,💥,🙏,🔥,💯,💘,💖$/m);
+  assert.match(template, /^AUTO_REACT_COMMANDS=true$/m);
+  assert.match(template, /^STATUS_LIKE_EMOJI=💕$/m);
+  assert.match(template, /^STATUS_LIKE_EMOJIS=💕,💞,💖,💯,🥰$/m);
+  assert.match(template, /^COMMAND_REACTION_EMOJIS=💕,💞,💖,💯,🥰$/m);
   assert.match(template, /^GEMINI_API_KEY=$/m);
   assert.match(template, /^GEMINI_MODEL=gemini-3\.6-flash$/m);
   assert.match(template, /^MANUS_API_KEY=$/m);
@@ -199,11 +202,21 @@ test('handler processes prefixed self-chat commands but ignores ordinary outgoin
   await handleMessage(sock, msg('.ping'));
   await handleMessage(sock, msg('ordinary outgoing message'));
 
-  assert.equal(sent.length, 3);
-  assert.match(sent[0].payload.caption, /BRITECH MD/);
-  assert.match(sent[1].payload.text, /BRITECH MD/);
-  assert.match(sent[2].payload.text, /Pong!/);
+  assert.equal(sent.length, 5);
+  assert.ok(sent[0].payload.react);
+  assert.match(sent[1].payload.caption, /BRITECH MD/);
+  assert.match(sent[2].payload.text, /BRITECH MD/);
+  assert.ok(sent[3].payload.react);
+  assert.match(sent[4].payload.text, /Pong!/);
   assert.ok(sent.every(item => item.chat === chat));
+});
+
+test('command acknowledgement emoji selection uses the configured random choices', () => {
+  const choices = ['💕', '💞', '💖', '💯', '🥰'];
+  let next = 0;
+  const represented = new Set(choices.map(() => selectCommandEmoji({ commandReactionEmojis: choices }, max => next++ % max)));
+  assert.deepEqual(represented, new Set(choices));
+  assert.equal(selectCommandEmoji({ commandReactionEmojis: [] }, () => 0), '💕');
 });
 
 test('dispatcher replies to .menu sent from the linked account as an appended ephemeral message', async () => {
@@ -215,9 +228,10 @@ test('dispatcher replies to .menu sent from the linked account as an appended ep
     message: { ephemeralMessage: { message: { conversation: '.menu' } } },
     messageTimestamp: Math.floor(Date.now() / 1000)
   }], 'append');
-  assert.equal(sent.length, 2);
-  assert.match(sent[0].payload.caption, /BRITECH MD/);
-  assert.match(sent[1].payload.text, /GENERAL/);
+  assert.equal(sent.length, 3);
+  assert.ok(sent[0].payload.react);
+  assert.match(sent[1].payload.caption, /BRITECH MD/);
+  assert.match(sent[2].payload.text, /GENERAL/);
 });
 
 test('menu text still replies when avatar media sending fails', async () => {
@@ -228,8 +242,9 @@ test('menu text still replies when avatar media sending fails', async () => {
   } };
   const message = { key: { remoteJid: '254700000004@s.whatsapp.net', fromMe: false }, message: { ephemeralMessage: { message: { conversation: '.menu' } } } };
   await handleMessage(sock, message);
-  assert.equal(sent.length, 1);
-  assert.match(sent[0].payload.text, /BRITECH MD/);
+  assert.equal(sent.length, 2);
+  assert.ok(sent[0].payload.react);
+  assert.match(sent[1].payload.text, /BRITECH MD/);
 });
 
 

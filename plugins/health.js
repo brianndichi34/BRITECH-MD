@@ -46,6 +46,7 @@ async function inspectHealth(ctx) {
 
   checks.push({ name: 'Anti-delete', ok: Boolean(config.autoAntiDelete), detail: config.autoAntiDelete ? 'Enabled; forwards recovered deletions to linked account self-chat' : 'Disabled by AUTO_ANTI_DELETE' });
   checks.push({ name: 'Status automation', ok: Boolean(config.autoViewStatus && config.autoLikeStatus), detail: `View ${config.autoViewStatus ? 'ON' : 'OFF'} / like ${config.autoLikeStatus ? 'ON' : 'OFF'}` });
+  checks.push({ name: 'Command reactions', ok: Boolean(config.autoReactCommands), detail: config.autoReactCommands ? `ON (${(config.commandReactionEmojis || []).join(' ') || 'default emoji set'})` : 'OFF' });
   checks.push({ name: 'Manus AI', ok: Boolean(config.manusApiKey), detail: config.manusApiKey ? 'API key configured (value hidden)' : 'Optional; not configured' });
 
   return { checks, issues, sessionDir };
@@ -91,8 +92,10 @@ async function sendDoctorPanel(sock, chat, text) {
 
 async function autoFixSafe({ root = ROOT, sessionDir = config.sessionDir } = {}) {
   const actions = [];
-  await fs.mkdir(path.resolve(sessionDir), { recursive: true });
-  actions.push('Created/verified the configured auth directory without changing its contents.');
+  const resolvedSessionDir = path.resolve(sessionDir);
+  await fs.mkdir(resolvedSessionDir, { recursive: true });
+  try { await fs.chmod(resolvedSessionDir, 0o700); } catch {}
+  actions.push('Created/verified the configured auth directory and permissions without changing its contents.');
   const envPath = path.join(root, '.env');
   try {
     await fs.access(envPath);
@@ -100,6 +103,17 @@ async function autoFixSafe({ root = ROOT, sessionDir = config.sessionDir } = {})
     const template = await fs.readFile(path.join(root, '.env.example'));
     await fs.writeFile(envPath, template, { flag: 'wx', mode: 0o600 });
     actions.push('Restored a safe root .env starter; it contains no session ID or API keys.');
+  }
+  try { await fs.chmod(envPath, 0o600); } catch {}
+  if (!Array.isArray(config.statusLikeEmojis) || !config.statusLikeEmojis.length) {
+    config.statusLikeEmoji = '💕';
+    config.statusLikeEmojis = ['💕', '💞', '💖', '💯', '🥰'];
+    actions.push('Restored the in-memory status reaction emoji defaults.');
+  }
+  if (!Array.isArray(config.commandReactionEmojis) || !config.commandReactionEmojis.length) {
+    config.commandReactionEmojis = ['💕', '💞', '💖', '💯', '🥰'];
+    config.autoReactCommands = true;
+    actions.push('Restored the in-memory command reaction defaults and enabled acknowledgements.');
   }
   return actions;
 }
