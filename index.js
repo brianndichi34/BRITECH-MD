@@ -8,7 +8,7 @@ const { dispatchUpsert } = require('./lib/message-dispatcher');
 const { hydrateSessionId } = require('./lib/session-id');
 const { createAntiDelete } = require('./lib/anti-delete');
 const { sendConnectionWelcome } = require('./lib/connection-welcome');
-const { createBadMacRecovery } = require('./lib/session-recovery');
+const { createBadMacRecovery, isBadMacError } = require('./lib/session-recovery');
 
 let stopping = false;
 let reconnectTimer;
@@ -87,6 +87,9 @@ async function startBot() {
   sock.ev.on('creds.update', saveCreds);
   sock.ev.on('connection.update', async update => {
     const { connection, lastDisconnect } = update;
+    if (config.autoSessionRecovery && isBadMacError(lastDisconnect?.error)) {
+      sessionRecovery.observe(lastDisconnect.error);
+    }
     if (connection === 'open') {
       logger.info(`✅ ${config.botName} connected as ${sock.user?.id}`);
       try { await sendConnectionWelcome(sock, config.welcomeMessage, { logger }); }
