@@ -60,10 +60,16 @@ async function startPairing(phone) {
   if (pairSocket) throw new Error('A pairing attempt is already running. Wait or restart the attempt.');
   const number = String(phone || '').replace(/\D/g, '');
   if (number.length < 10 || number.length > 15) throw new Error('Enter a valid international number with country code, digits only.');
+  const credsPath = path.join(SESSION_DIR, 'creds.json');
   fs.mkdirSync(SESSION_DIR, { recursive: true });
-  if (fs.existsSync(path.join(SESSION_DIR, 'creds.json'))) {
-    const existing = JSON.parse(fs.readFileSync(path.join(SESSION_DIR, 'creds.json'), 'utf8'));
-    if (existing.registered) throw new Error('This service already has a registered WhatsApp session. Do not overwrite it. Remove the old linked device and clear the session folder only if you intentionally want to pair again.');
+  if (fs.existsSync(credsPath)) {
+    let existing;
+    try { existing = JSON.parse(fs.readFileSync(credsPath, 'utf8')); } catch {}
+    if (existing?.registered) throw new Error('This service already has a registered WhatsApp session. Do not overwrite it. Remove the old linked device and clear the session folder only if you intentionally want to pair again.');
+    // A rejected/expired attempt can leave an unregistered creds.json and stale
+    // pre-keys behind. They must not be reused for the next phone-number link.
+    fs.rmSync(SESSION_DIR, { recursive: true, force: true });
+    fs.mkdirSync(SESSION_DIR, { recursive: true });
   }
   pairStatus = 'connecting'; pairingCode = ''; pairingPhone = number; pairError = ''; pairTextSent = false; pairDocumentSent = false;
   const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
@@ -78,14 +84,22 @@ async function startPairing(phone) {
   sock.ev.on('creds.update', saveCreds);
   sock.ev.on('connection.update', async update => {
     if (update.connection === 'connecting' && !pairingCode && !state.creds.registered) {
-      try {
-        await new Promise(resolve => setTimeout(resolve, 1200));
-        if (pairSocket !== sock || pairingCode) return;
-        pairingCode = await sock.requestPairingCode(number);
-        pairStatus = 'code_ready';
-        log.info('Pairing code generated; it is intentionally hidden from server logs.');
-      } catch (error) {
-        pairError = error.message || 'Could not request a pairing code.';
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      if (pairSocket !== sock || pairingCode || state.creds.registered) return;
+      let lastError;
+      for (let attempt = 1; attempt <= 3 && pairSocket === sock && !pairingCode; attempt++) {
+        try {
+          pairingCode = await sock.requestPairingCode(number);
+          pairStatus = 'code_ready';
+          log.info('Pairing code generated; it is intentionally hidden from server logs.');
+          break;
+        } catch (error) {
+          lastError = error;
+          if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 1800));
+        }
+      }
+      if (!pairingCode && pairSocket === sock) {
+        pairError = lastError?.message || 'Could not request a pairing code. Start a fresh attempt.';
         pairStatus = 'error';
         log.error({ message: pairError }, 'Pair-code request failed');
         try { sock.end(undefined); } catch {}
@@ -121,6 +135,7 @@ async function startPairing(phone) {
       const status = update.lastDisconnect?.error?.output?.statusCode;
       pairError = status === DisconnectReason.loggedOut ? 'WhatsApp rejected the session. Remove old linked devices and try again.' : 'WhatsApp connection closed. Start a fresh pairing attempt.';
       pairStatus = 'error'; pairingCode = ''; pairSocket = null;
+      if (!state.creds.registered) fs.rmSync(SESSION_DIR, { recursive: true, force: true });
     }
   });
 }

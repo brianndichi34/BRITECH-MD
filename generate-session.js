@@ -39,10 +39,17 @@ function publishPairingCode(code) {
   console.log('On your phone: WhatsApp > Linked devices > Link with phone number instead.');
 
   if (fs.existsSync(sessionDir) && fs.readdirSync(sessionDir).length) {
-    if (process.env.SESSION_REPLACE !== 'YES') {
-      throw new Error('An existing auth folder was found. It was NOT changed. Back it up first; set SESSION_REPLACE=YES only if you intentionally want to replace it.');
+    const credsPath = path.join(sessionDir, 'creds.json');
+    let existing;
+    try { existing = JSON.parse(fs.readFileSync(credsPath, 'utf8')); } catch {}
+    if (!existing?.registered && existing && process.env.SESSION_REPLACE !== 'YES') {
+      fs.rmSync(sessionDir, { recursive: true, force: true });
+    } else {
+      if (process.env.SESSION_REPLACE !== 'YES') {
+        throw new Error('An existing auth folder was found. It was NOT changed. Back it up first; set SESSION_REPLACE=YES only if you intentionally want to replace it.');
+      }
+      fs.rmSync(sessionDir, { recursive: true, force: true });
     }
-    fs.rmSync(sessionDir, { recursive: true, force: true });
   }
 
   let phoneInput = process.env.PHONE_NUMBER || '';
@@ -82,15 +89,19 @@ function publishPairingCode(code) {
       const requestCode = async () => {
         if (codeRequested || state.creds.registered) return;
         codeRequested = true;
-        try {
-          // Baileys expects the socket to be initialized before requesting a phone code.
-          await sleep(1500);
-          const code = await sock.requestPairingCode(phone);
-          publishPairingCode(code);
-        } catch (error) {
-          lastError = error;
-          finish({ type: 'retry', error });
+        await sleep(1500);
+        for (let attempt = 1; attempt <= 3 && !state.creds.registered; attempt++) {
+          try {
+            // Baileys expects the socket to be initialized before requesting a phone code.
+            const code = await sock.requestPairingCode(phone);
+            publishPairingCode(code);
+            return;
+          } catch (error) {
+            lastError = error;
+            if (attempt < 3) await sleep(1800);
+          }
         }
+        finish({ type: 'retry', error: lastError || new Error('Could not request a pairing code.') });
       };
 
       sock.ev.on('connection.update', update => {
