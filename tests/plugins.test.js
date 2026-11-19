@@ -19,9 +19,9 @@ const root = path.join(__dirname, '..');
 
 test('plugin registry loads unique command names and describes all available modules', () => {
   assert.deepEqual(plugins.plugins.map(plugin => plugin.name), [
-    'brand-and-manus', 'group-tools', 'health-and-safe-repair', 'whatsapp-interactions', 'maintenance-and-diagnostics', 'local-media', 'presence'
+    'access-control', 'brand-and-manus', 'extended-commands', 'group-tools', 'health-and-safe-repair', 'whatsapp-interactions', 'maintenance-and-diagnostics', 'local-media', 'presence'
   ]);
-  for (const command of ['sticker', 'toimg', 'qr', 'poll', 'react', 'setname', 'setdesc', 'mute', 'unmute', 'revoke', 'afk', 'back', 'settings', 'setmenuprofile', 'manus', 'manuscheck', 'doctor', 'diagnose', 'autofix', 'uptime', 'runtime', 'jid', 'update']) {
+  for (const command of ['mode', 'private', 'public', 'pin', 'unpin', 'prefix', 'spotify', 'soundcloud', 'apple', 'ncs', 'spotifysearch', 'soundcloudsearch', 'applesearch', 'ncssearch', 'imageedit', 'deepseek', 'wormgpt', 'copilot', 'sticker', 'toimg', 'qr', 'poll', 'react', 'setname', 'setdesc', 'mute', 'unmute', 'revoke', 'afk', 'back', 'settings', 'setmenuprofile', 'manus', 'manuscheck', 'doctor', 'diagnose', 'autofix', 'uptime', 'runtime', 'jid', 'update']) {
     assert.equal(typeof plugins.descriptions[command], 'string', `${command} should be registered`);
   }
   assert.equal(plugins.get('STICKER').plugin, media);
@@ -160,6 +160,7 @@ test('AFK plugin sets, clears, and mentions temporary away status', async () => 
 });
 
 test('handler exposes plugin commands in menu/help while preserving existing deployment settings', async () => {
+  config.accessMode = 'public';
   const sent = [];
   const sock = { async sendMessage(chat, payload) { sent.push({ chat, payload }); } };
   await handleMessage(sock, { key: { remoteJid: '254700000001@s.whatsapp.net', fromMe: false }, message: { conversation: '.menu' }, messageTimestamp: Math.floor(Date.now() / 1000) });
@@ -211,6 +212,19 @@ test('handler processes prefixed self-chat commands but ignores ordinary outgoin
   assert.ok(sent.every(item => item.chat === chat));
 });
 
+test('private mode blocks non-owner commands and owner mode command changes access', async () => {
+  const originalMode = config.accessMode;
+  config.accessMode = 'private';
+  const sent = [];
+  const sock = { async sendMessage(chat, payload) { sent.push({ chat, payload }); return {}; } };
+  await handleMessage(sock, { key: { remoteJid: '254700000001@s.whatsapp.net', fromMe: false }, message: { conversation: '.ping' } });
+  assert.equal(sent.length, 0);
+  await handleMessage(sock, { key: { remoteJid: '254717276195@s.whatsapp.net', fromMe: true }, message: { conversation: '.mode public' } });
+  assert.match(sent.at(-1).payload.text, /Public mode enabled/);
+  assert.equal(config.accessMode, 'public');
+  config.accessMode = originalMode;
+});
+
 test('command acknowledgement emoji selection uses the configured random choices', () => {
   const choices = ['💕', '💞', '💖', '💯', '🥰'];
   let next = 0;
@@ -235,6 +249,7 @@ test('dispatcher replies to .menu sent from the linked account as an appended ep
 });
 
 test('menu text still replies when avatar media sending fails', async () => {
+  config.accessMode = 'public';
   const sent = [];
   const sock = { async sendMessage(chat, payload) {
     if (payload.image) throw new Error('test avatar transport failure');
