@@ -83,7 +83,9 @@ function publishPairingCode(code) {
         auth: state,
         logger: pino({ level: 'silent' }),
         printQRInTerminal: false,
-        browser: Browsers.ubuntu('Chrome')
+        // WhatsApp phone-number linking is more reliable with the desktop
+        // profile, including on WhatsApp Business accounts.
+        browser: Browsers.macOS('Desktop')
       });
       sock.ev.on('creds.update', saveCreds);
 
@@ -117,7 +119,11 @@ function publishPairingCode(code) {
           const status = lastDisconnect?.error?.output?.statusCode;
           lastError = lastDisconnect?.error || new Error('WhatsApp connection closed');
           if (status === DisconnectReason.loggedOut) {
-            finish({ type: 'fatal', error: new Error('WhatsApp logged out this session. Remove the old linked device and pair again.') });
+            if (!state.creds.registered) {
+              finish({ type: 'retry', error: new Error('WhatsApp rejected or expired this pairing code. A fresh code will be generated.') });
+            } else {
+              finish({ type: 'fatal', error: new Error('WhatsApp logged out this session. Remove the old linked device and pair again.') });
+            }
           } else finish({ type: 'retry', error: lastError, status });
         }
       });
