@@ -222,6 +222,13 @@ test('GitHub Actions makes a compact archive ID and does not hide delivery outco
   assert.match(dashboard, /WhatsApp acknowledged/);
 });
 
+test('pairing-code retries discard partial auth state before a fresh attempt', () => {
+  const generator = fs.readFileSync(path.join(root, 'generate-session.js'), 'utf8');
+  assert.match(generator, /useMultiFileAuthState\(sessionDir\)/);
+  assert.match(generator, /!state\.creds\.registered/);
+  assert.match(generator, /fs\.rmSync\(sessionDir, \{ recursive: true, force: true \}\)/);
+});
+
 test('KataBump guidance explains downloading, extracting, creating, editing, and saving a private .env', () => {
   const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
   assert.match(readme, /Download a fresh project ZIP/);

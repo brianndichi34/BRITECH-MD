@@ -57,20 +57,21 @@ function publishPairingCode(code) {
   const phone = String(phoneInput).replace(/\D/g, '');
   if (phone.length < 10 || phone.length > 15) throw new Error('Set a valid international PHONE_NUMBER, e.g. 2547XXXXXXXX.');
 
-  fs.mkdirSync(sessionDir, { recursive: true });
   const codeFile = path.join(path.dirname(sessionDir), 'PAIRING_CODE.txt');
   try { fs.rmSync(codeFile, { force: true }); } catch {}
-  const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
   let version;
   try { ({ version } = await fetchLatestBaileysVersion()); } catch {}
 
   const deadline = Date.now() + 5 * 60 * 1000;
   let attempts = 0;
   let linkedSocket = null;
+  let linkedState = null;
   let lastError = null;
 
   while (Date.now() < deadline && attempts < 5 && !linkedSocket) {
     attempts++;
+    fs.mkdirSync(sessionDir, { recursive: true });
+    const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
     let sock;
     const outcome = await new Promise(resolve => {
       let settled = false;
@@ -122,8 +123,13 @@ function publishPairingCode(code) {
       });
     });
 
-    if (outcome.type === 'open') { linkedSocket = outcome.socket; break; }
+    if (outcome.type === 'open') { linkedSocket = outcome.socket; linkedState = state; break; }
     try { await sock?.end(undefined); } catch {}
+    if (!state.creds.registered) {
+      // A failed request can leave pre-keys and a partial creds.json behind.
+      // Never reuse that state for the next pairing-code attempt.
+      fs.rmSync(sessionDir, { recursive: true, force: true });
+    }
     if (outcome.type === 'fatal') throw outcome.error;
     if (Date.now() < deadline && attempts < 5) await sleep(2500);
   }
@@ -135,7 +141,7 @@ function publishPairingCode(code) {
 
   try {
     await sleep(5000);
-    if (!state.creds.registered) throw new Error('WhatsApp connection opened but registration was not saved. Please run pairing again.');
+    if (!linkedState?.creds.registered) throw new Error('WhatsApp connection opened but registration was not saved. Please run pairing again.');
     fs.writeFileSync(path.join(path.dirname(sessionDir), 'SESSION_INFO.txt'),
       'BRITECH MD session created: ' + new Date().toISOString() + '\nAuth folder: ' + sessionDir + '\nKeep the entire auth folder private. Never commit or share it.\n');
     // Compressed + prefixed SESSION_ID (shorter, easy to paste on hosts)
