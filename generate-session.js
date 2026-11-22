@@ -82,9 +82,9 @@ function publishPairingCode(code) {
         ...(version ? { version } : {}),
         auth: state,
         logger: pino({ level: 'silent' }),
-        // WhatsApp phone-number linking is more reliable with the desktop
-        // profile, including on WhatsApp Business accounts.
-        browser: Browsers.macOS('Desktop')
+        // WhatsApp validates this companion platform string during pairing.
+        // Use the canonical Chrome (Mac OS) label, not a custom Desktop label.
+        browser: Browsers.macOS('Chrome')
       });
       sock.ev.on('creds.update', saveCreds);
 

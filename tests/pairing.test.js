@@ -233,6 +233,8 @@ test('pairing-code requests wait for Baileys initial QR handshake', () => {
   const generator = fs.readFileSync(path.join(root, 'generate-session.js'), 'utf8');
   assert.match(generator, /const \{ connection, qr, lastDisconnect \} = update/);
   assert.match(generator, /if \(qr && !state\.creds\.registered\)/);
+  assert.match(generator, /browser: Browsers\.macOS\('Chrome'\)/);
+  assert.doesNotMatch(generator, /Browsers\.macOS\('Desktop'\)/);
   assert.doesNotMatch(generator, /printQRInTerminal/);
 });
 
