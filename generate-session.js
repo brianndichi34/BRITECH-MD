@@ -82,7 +82,6 @@ function publishPairingCode(code) {
         ...(version ? { version } : {}),
         auth: state,
         logger: pino({ level: 'silent' }),
-        printQRInTerminal: false,
         // WhatsApp phone-number linking is more reliable with the desktop
         // profile, including on WhatsApp Business accounts.
         browser: Browsers.macOS('Desktop')
@@ -108,10 +107,10 @@ function publishPairingCode(code) {
       };
 
       sock.ev.on('connection.update', update => {
-        const { connection, lastDisconnect } = update;
-        // Do not depend on a QR event: phone-number pairing can be requested as
-        // soon as the socket begins connecting.
-        if ((connection === 'connecting' || connection === 'open') && !state.creds.registered) {
+        const { connection, qr, lastDisconnect } = update;
+        // Baileys emits qr in pairing-code mode after the initial pair-device
+        // handshake. Requesting earlier can create a code the server rejects.
+        if (qr && !state.creds.registered) {
           void requestCode();
         }
         if (connection === 'open') finish({ type: 'open', socket: sock });

@@ -17,7 +17,7 @@
     "node": ">=26.0.0 <27.0.0"
   },
   "dependencies": {
-    "@whiskeysockets/baileys": "6.7.24",
+    "@whiskeysockets/baileys": "7.0.0-rc14",
     "dotenv": "^16.4.7",
     "jszip": "^3.10.2",
     "mathjs": "^15.2.0",
