@@ -7,7 +7,7 @@ const baileys = require('@whiskeysockets/baileys');
 const makeWASocket = baileys.default;
 const { useMultiFileAuthState, fetchLatestBaileysVersion, Browsers, DisconnectReason } = baileys;
 const pino = require('pino');
-const { createAuthArchiveSessionId, getVerifiedRecipient, deliverSession } = require('./lib/pairing-session');
+const { createAuthArchiveSessionId, getVerifiedRecipient, deliverSession, normalizePhone } = require('./lib/pairing-session');
 
 const PORT = Number(process.env.PORT || process.env.PAIRING_PORT || 3000);
 const HOST = '0.0.0.0';
@@ -62,7 +62,7 @@ async function launchBot() {
 }
 async function startPairing(phone) {
   if (pairSocket) throw new Error('A pairing attempt is already running. Wait or restart the attempt.');
-  const number = String(phone || '').replace(/\D/g, '');
+  const number = normalizePhone(phone);
   if (number.length < 10 || number.length > 15) throw new Error('Enter a valid international number with country code, digits only.');
   const credsPath = path.join(SESSION_DIR, 'creds.json');
   fs.mkdirSync(SESSION_DIR, { recursive: true });
@@ -99,7 +99,11 @@ async function startPairing(phone) {
   }, PAIRING_TIMEOUT_MS);
   sock.ev.on('creds.update', saveCreds);
   sock.ev.on('connection.update', async update => {
-    if (update.connection === 'connecting' && !pairingCode && !state.creds.registered) {
+    const { connection, qr } = update;
+    // requestPairingCode must follow Baileys' initial pair-device handshake.
+    // Calling it immediately on `connecting` intermittently produces codes
+    // that WhatsApp rejects on slower hosts or after a version negotiation.
+    if (qr && !pairingCode && !state.creds.registered) {
       await new Promise(resolve => setTimeout(resolve, 1500));
       if (pairSocket !== sock || pairingCode || state.creds.registered) return;
       let lastError;

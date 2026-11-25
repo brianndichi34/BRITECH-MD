@@ -6,7 +6,7 @@ const pino = require('pino');
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
-const { createAuthArchiveSessionId } = require('./lib/pairing-session');
+const { createAuthArchiveSessionId, normalizePhone } = require('./lib/pairing-session');
 
 const sessionDir = path.resolve(process.env.SESSION_DIR || './session/auth');
 const sessionIdPath = path.resolve(process.env.SESSION_ID_FILE || './SESSION_ID.txt');
@@ -54,7 +54,7 @@ function publishPairingCode(code) {
 
   let phoneInput = process.env.PHONE_NUMBER || '';
   if (!phoneInput && !ciMode) phoneInput = await ask('WhatsApp number in international format, digits only (e.g. 2547XXXXXXXX): ');
-  const phone = String(phoneInput).replace(/\D/g, '');
+  const phone = normalizePhone(phoneInput);
   if (phone.length < 10 || phone.length > 15) throw new Error('Set a valid international PHONE_NUMBER, e.g. 2547XXXXXXXX.');
 
   const codeFile = path.join(path.dirname(sessionDir), 'PAIRING_CODE.txt');

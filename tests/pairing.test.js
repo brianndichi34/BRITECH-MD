@@ -236,6 +236,15 @@ test('pairing-code requests wait for Baileys initial QR handshake', () => {
   assert.match(generator, /browser: Browsers\.macOS\('Chrome'\)/);
   assert.doesNotMatch(generator, /Browsers\.macOS\('Desktop'\)/);
   assert.doesNotMatch(generator, /printQRInTerminal/);
+  assert.match(server, /const \{ connection, qr \} = update/);
+  assert.match(server, /if \(qr && !pairingCode && !state\.creds\.registered\)/);
+  assert.doesNotMatch(server, /if \(update\.connection === 'connecting' && !pairingCode/);
+});
+
+test('pairing accepts common international display formats without changing the number', () => {
+  assert.equal(pairingSession.normalizePhone('+254 712-345-678'), '254712345678');
+  assert.equal(pairingSession.normalizePhone('254 (712) 345 678'), '254712345678');
+  assert.equal(pairingSession.normalizePhone('00 254 712 345 678'), '254712345678');
 });
 
 test('KataBump guidance explains downloading, extracting, creating, editing, and saving a private .env', () => {
