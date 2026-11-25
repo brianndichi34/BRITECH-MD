@@ -1,7 +1,7 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
-const { proto, generateMessageIDV2 } = require('@whiskeysockets/baileys');
 const config = require('../lib/config');
+const { loadBaileys } = require('../lib/baileys');
 
 const ROOT = path.join(__dirname, '..');
 
@@ -72,6 +72,7 @@ function formatHealth(result, title = 'BRITECH MD · BOT HEALTH') {
 
 async function sendDoctorPanel(sock, chat, text) {
   if (typeof sock?.relayMessage !== 'function') return false;
+  const { proto, generateMessageIDV2 } = await loadBaileys();
   const content = proto.Message.create({
     viewOnceMessage: {
       message: {

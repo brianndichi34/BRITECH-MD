@@ -1,11 +1,10 @@
-const { jidNormalizedUser } = require('@whiskeysockets/baileys');
-
 const afkUsers = new Map();
 const lastNotice = new Map();
 
 function userKeys(jid) {
   if (!jid) return [];
-  const normalized = jidNormalizedUser(jid);
+  const [rawUser, server] = String(jid).split('@');
+  const normalized = rawUser && server ? `${rawUser.split(':')[0]}@${server === 'c.us' ? 's.whatsapp.net' : server}` : '';
   return [...new Set([jid, normalized].filter(Boolean))];
 }
 

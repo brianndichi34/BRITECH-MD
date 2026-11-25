@@ -1,5 +1,3 @@
-const makeWASocket = require('@whiskeysockets/baileys').default;
-const { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const fs = require('fs');
 const path = require('path');
@@ -9,6 +7,7 @@ const { hydrateSessionId } = require('./lib/session-id');
 const { createAntiDelete } = require('./lib/anti-delete');
 const { sendConnectionWelcome } = require('./lib/connection-welcome');
 const { createBadMacRecovery, isBadMacError } = require('./lib/session-recovery');
+const { loadBaileys } = require('./lib/baileys');
 
 let stopping = false;
 let reconnectTimer;
@@ -83,6 +82,7 @@ async function startBot() {
   if (stopping || startInFlight) return activeSocket;
   startInFlight = true;
   try {
+    const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = await loadBaileys();
     fs.mkdirSync(path.resolve(config.sessionDir), { recursive: true, mode: 0o700 });
     await hydrateSessionFromEnv();
     const { state, saveCreds } = await useMultiFileAuthState(path.resolve(config.sessionDir));

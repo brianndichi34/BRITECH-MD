@@ -1,7 +1,4 @@
 require('dotenv').config();
-const baileys = require('@whiskeysockets/baileys');
-const makeWASocket = baileys.default;
-const { useMultiFileAuthState, fetchLatestBaileysVersion, DisconnectReason, Browsers } = baileys;
 const pino = require('pino');
 const fs = require('fs');
 const path = require('path');
@@ -35,6 +32,7 @@ function publishPairingCode(code) {
 }
 
 (async () => {
+  const { default: makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion, DisconnectReason, Browsers } = await import('@whiskeysockets/baileys');
   console.log('BRITECH MD — WhatsApp session pairing');
   console.log('On your phone: WhatsApp > Linked devices > Link with phone number instead.');
 

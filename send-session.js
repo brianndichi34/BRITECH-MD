@@ -1,13 +1,11 @@
 require('dotenv').config();
-const baileys = require('@whiskeysockets/baileys');
-const makeWASocket = baileys.default;
-const { useMultiFileAuthState, Browsers } = baileys;
 const pino = require('pino');
 const fs = require('fs');
 const path = require('path');
 const { getVerifiedRecipient, deliverSession } = require('./lib/pairing-session');
 
 (async () => {
+  const { default: makeWASocket, useMultiFileAuthState, Browsers } = await import('@whiskeysockets/baileys');
   const phone = String(process.env.PHONE_NUMBER || '').replace(/\D/g, '');
   const sessionDir = path.resolve(process.env.SESSION_DIR || './session/auth');
   const sessionIdPath = path.resolve(process.env.SESSION_ID_FILE || './SESSION_ID.txt');

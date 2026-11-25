@@ -396,13 +396,14 @@ test('AI gives setup guidance without calling a provider when no keys are config
 
 
 test('Bot Doctor sends real WhatsApp quick-reply buttons with supported command IDs', async () => {
+  const { proto } = await import('@whiskeysockets/baileys');
   let call;
   const sock = { user: { id: '254717276195@s.whatsapp.net' }, async relayMessage(...args) { call = args; } };
   assert.equal(await health.sendDoctorPanel(sock, '254700000001@s.whatsapp.net', 'Health summary'), true);
   assert.equal(call[0], '254700000001@s.whatsapp.net');
-  const encoded = require('@whiskeysockets/baileys').proto.Message.encode(call[1]).finish();
+  const encoded = proto.Message.encode(call[1]).finish();
   assert.ok(encoded.length > 0, 'interactive message must serialize using the Baileys proto');
-  const roundTrip = require('@whiskeysockets/baileys').proto.Message.decode(encoded);
+  const roundTrip = proto.Message.decode(encoded);
   const buttons = roundTrip.viewOnceMessage.message.interactiveMessage.nativeFlowMessage.buttons;
   assert.equal(JSON.parse(buttons[0].buttonParamsJson).id, '.diagnose');
   assert.equal(JSON.parse(buttons[1].buttonParamsJson).id, '.autofix');

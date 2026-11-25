@@ -1,8 +1,9 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { WAMessageStubType } = require('@whiskeysockets/baileys');
 const config = require('../lib/config');
 const { createAntiDelete } = require('../lib/anti-delete');
+
+const WAMessageStubType = { REVOKE: 1 };
 
 const silentLogger = { info() {}, warn() {} };
 const ownerNumber = '254717276195';

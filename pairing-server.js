@@ -3,11 +3,9 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
-const baileys = require('@whiskeysockets/baileys');
-const makeWASocket = baileys.default;
-const { useMultiFileAuthState, fetchLatestBaileysVersion, Browsers, DisconnectReason } = baileys;
 const pino = require('pino');
 const { createAuthArchiveSessionId, getVerifiedRecipient, deliverSession, normalizePhone } = require('./lib/pairing-session');
+const { loadBaileys } = require('./lib/baileys');
 
 const PORT = Number(process.env.PORT || process.env.PAIRING_PORT || 3000);
 const HOST = '0.0.0.0';
@@ -62,6 +60,7 @@ async function launchBot() {
 }
 async function startPairing(phone) {
   if (pairSocket) throw new Error('A pairing attempt is already running. Wait or restart the attempt.');
+  const { default: makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion, Browsers, DisconnectReason } = await loadBaileys();
   const number = normalizePhone(phone);
   if (number.length < 10 || number.length > 15) throw new Error('Enter a valid international number with country code, digits only.');
   const credsPath = path.join(SESSION_DIR, 'creds.json');
