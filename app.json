@@ -11,6 +11,7 @@
     "OWNER_NUMBER": { "description": "Owner WhatsApp number with country code, digits only", "required": true },
     "PREFIX": { "description": "Command prefix", "value": "." },
     "TIMEZONE": { "description": "Time zone", "value": "Africa/Nairobi" },
+    "SESSION_ID": { "description": "Complete BRITECH3 WhatsApp session ID", "required": true },
     "SESSION_DIR": { "description": "Persistent session directory", "value": "/app/session/auth" },
     "OPENAI_API_KEY": { "description": "Optional OpenAI API key", "required": false }
   }
