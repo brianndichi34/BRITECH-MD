@@ -10,8 +10,10 @@ async function inspectHealth(ctx) {
   const checks = [];
   const sessionDir = path.resolve(config.sessionDir);
   const nodeMajor = Number(process.versions.node.split('.')[0]);
-  checks.push({ name: 'Runtime', ok: nodeMajor >= 26 && nodeMajor < 27, detail: `Node.js ${process.versions.node} (project target: 26.x)` });
-  if (!(nodeMajor >= 26 && nodeMajor < 27)) issues.push('Select Node.js 26.x in the hosting panel and restart.');
+  const nodeMinor = Number(process.versions.node.split('.')[1]);
+  const supportedRuntime = nodeMajor > 20 || (nodeMajor === 20 && nodeMinor >= 9);
+  checks.push({ name: 'Runtime', ok: supportedRuntime, detail: `Node.js ${process.versions.node} (supported: 20.9+ LTS)` });
+  if (!supportedRuntime) issues.push('Select Node.js 20.9+ (or a newer LTS release) in the hosting panel and restart.');
 
   const connected = Boolean(ctx.sock?.user?.id);
   checks.push({ name: 'WhatsApp link', ok: connected, detail: connected ? 'Linked account is connected' : 'No active linked account identity' });

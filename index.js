@@ -12,6 +12,9 @@ const { createBadMacRecovery, isBadMacError } = require('./lib/session-recovery'
 
 let stopping = false;
 let reconnectTimer;
+let reconnectAttempt = 0;
+let startInFlight = false;
+let activeSocket = null;
 let profileInitialized = false;
 let logger;
 const sessionRecovery = createBadMacRecovery({
@@ -63,72 +66,92 @@ async function hydrateSessionFromEnv() {
   }
 }
 
-async function startBot() {
-  if (stopping) return;
-  fs.mkdirSync(path.resolve(config.sessionDir), { recursive: true });
-  await hydrateSessionFromEnv();
-  const { state, saveCreds } = await useMultiFileAuthState(path.resolve(config.sessionDir));
-  let version;
-  try { ({ version } = await fetchLatestBaileysVersion()); }
-  catch { logger.warn('Could not fetch latest WhatsApp Web version; using library default.'); }
-
-  const sock = makeWASocket({
-    ...(version ? { version } : {}),
-    auth: state,
-    logger: logger.child({ module: 'baileys' }),
-    printQRInTerminal: false,
-    browser: [config.botName, 'Chrome', '1.0.0'],
-    markOnlineOnConnect: true,
-    syncFullHistory: false,
-    generateHighQualityLinkPreview: false,
-    defaultQueryTimeoutMs: 60000
-  });
-
-  sock.ev.on('creds.update', saveCreds);
-  sock.ev.on('connection.update', async update => {
-    const { connection, lastDisconnect } = update;
-    if (config.autoSessionRecovery && isBadMacError(lastDisconnect?.error)) {
-      sessionRecovery.observe(lastDisconnect.error);
-    }
-    if (connection === 'open') {
-      logger.info(`✅ ${config.botName} connected as ${sock.user?.id}`);
-      try { await sendConnectionWelcome(sock, config.welcomeMessage, { logger }); }
-      catch (error) { logger.error({ err: error?.message || error }, 'Could not persist the one-time connection welcome marker.'); }
-      await initializeBotProfile(sock);
-    }
-    if (connection === 'close' && !stopping) {
-      const code = lastDisconnect?.error?.output?.statusCode;
-      if (code === DisconnectReason.loggedOut) {
-        logger.error('WhatsApp logged out. Pair again using the session generator.');
-        return;
-      }
-      logger.warn({ code }, 'Connection closed; reconnecting in 5 seconds.');
-      clearTimeout(reconnectTimer);
-      reconnectTimer = setTimeout(() => startBot().catch(err => logger.error(err)), 5000);
-    }
-  });
-  sock.ev.on('messages.upsert', async ({ messages, type }) => {
-    antiDelete.remember(sock, messages, config);
-    await dispatchUpsert(sock, messages, type, config, logger);
-  });
-  sock.ev.on('messages.update', updates => {
-    antiDelete.handleUpdates(sock, updates, config, logger).catch(error => {
-      logger.warn({ err: error?.message || error }, 'Anti-delete message handling failed.');
+function scheduleReconnect(code) {
+  if (stopping || reconnectTimer) return;
+  const delay = Math.min(60_000, 5_000 * (2 ** Math.min(reconnectAttempt, 3))) + Math.floor(Math.random() * 1_500);
+  reconnectAttempt += 1;
+  logger.warn({ code, delay, attempt: reconnectAttempt }, 'Connection closed; scheduling one supervised reconnect.');
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = undefined;
+    startBot().catch(error => {
+      logger.error({ err: error?.message || error }, 'Reconnect failed; scheduling another attempt.');
+      scheduleReconnect('startup-error');
     });
-  });
-  sock.ev.on('group-participants.update', async update => {
-    if (update.action !== 'add') return;
-    const welcome = config.welcomeMessage;
-    if (!welcome) return;
-    const text = welcome.replace('{user}', update.participants.map(p => `@${p.split('@')[0]}`).join(', '));
-    await sock.sendMessage(update.id, { text, mentions: update.participants }).catch(err => logger.warn(err));
-  });
-  return sock;
+  }, delay);
+}
+async function startBot() {
+  if (stopping || startInFlight) return activeSocket;
+  startInFlight = true;
+  try {
+    fs.mkdirSync(path.resolve(config.sessionDir), { recursive: true, mode: 0o700 });
+    await hydrateSessionFromEnv();
+    const { state, saveCreds } = await useMultiFileAuthState(path.resolve(config.sessionDir));
+    let version;
+    try { ({ version } = await fetchLatestBaileysVersion()); }
+    catch { logger.warn('Could not fetch latest WhatsApp Web version; using library default.'); }
+    const sock = makeWASocket({
+      ...(version ? { version } : {}),
+      auth: state,
+      logger: logger.child({ module: 'baileys' }),
+      printQRInTerminal: false,
+      browser: [config.botName, 'Chrome', '1.0.0'],
+      markOnlineOnConnect: true,
+      syncFullHistory: false,
+      generateHighQualityLinkPreview: false,
+      defaultQueryTimeoutMs: 60000
+    });
+    activeSocket = sock;
+    sock.ev.on('creds.update', saveCreds);
+    sock.ev.on('connection.update', async update => {
+      const { connection, lastDisconnect } = update;
+      if (config.autoSessionRecovery && isBadMacError(lastDisconnect?.error)) {
+        sessionRecovery.observe(lastDisconnect.error);
+      }
+      if (connection === 'open') {
+        reconnectAttempt = 0;
+        clearTimeout(reconnectTimer);
+        reconnectTimer = undefined;
+        logger.info(`✅ ${config.botName} connected as ${sock.user?.id}`);
+        try { await sendConnectionWelcome(sock, config.welcomeMessage, { logger }); }
+        catch (error) { logger.error({ err: error?.message || error }, 'Could not persist the one-time connection welcome marker.'); }
+        await initializeBotProfile(sock);
+      }
+      if (connection === 'close' && activeSocket === sock && !stopping) {
+        activeSocket = null;
+        const code = lastDisconnect?.error?.output?.statusCode;
+        if (code === DisconnectReason.loggedOut) {
+          logger.error('WhatsApp logged out. Pair again using the session generator.');
+          return;
+        }
+        scheduleReconnect(code);
+      }
+    });
+    sock.ev.on('messages.upsert', async ({ messages, type }) => {
+      antiDelete.remember(sock, messages, config);
+      await dispatchUpsert(sock, messages, type, config, logger);
+    });
+    sock.ev.on('messages.update', updates => {
+      antiDelete.handleUpdates(sock, updates, config, logger).catch(error => {
+        logger.warn({ err: error?.message || error }, 'Anti-delete message handling failed.');
+      });
+    });
+    sock.ev.on('group-participants.update', async update => {
+      if (update.action !== 'add') return;
+      const welcome = config.welcomeMessage;
+      if (!welcome) return;
+      const text = welcome.replace('{user}', update.participants.map(p => `@${p.split('@')[0]}`).join(', '));
+      await sock.sendMessage(update.id, { text, mentions: update.participants }).catch(err => logger.warn(err));
+    });
+    return sock;
+  } finally {
+    startInFlight = false;
+  }
 }
 
 async function shutdown() {
   stopping = true;
   clearTimeout(reconnectTimer);
+  try { await activeSocket?.end?.(undefined); } catch {}
   logger.info('Stopping BRITECH MD...');
   setTimeout(() => process.exit(0), 1500).unref();
 }

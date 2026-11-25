@@ -22,5 +22,7 @@ services:
         value: .
       - key: SESSION_DIR
         value: /app/session/auth
+      - key: PAIRING_TIMEOUT_MS
+        value: "300000"
       - key: TIMEZONE
         value: Africa/Nairobi

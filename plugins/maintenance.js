@@ -39,7 +39,7 @@ async function outdatedDependencies(runner = runNpm) {
 
 async function handle(command, ctx) {
   if (command === 'uptime') return ctx.reply(`⏱️ Bot process uptime: ${formatUptime(process.uptime())}`);
-  if (command === 'runtime') return ctx.reply(`🩺 Runtime diagnostics\nNode.js: ${process.version}\nPlatform: ${process.platform} (${process.arch})\nBot process uptime: ${formatUptime(process.uptime())}\nRequired: Node.js 26.x`);
+  if (command === 'runtime') return ctx.reply(`🩺 Runtime diagnostics\nNode.js: ${process.version}\nPlatform: ${process.platform} (${process.arch})\nBot process uptime: ${formatUptime(process.uptime())}\nRequired: Node.js 20.9+ (or newer LTS)`);
   if (command === 'jid') return ctx.reply(`🔎 Chat JID: ${ctx.chat || 'unknown'}\nYour sender JID: ${ctx.sender || 'unknown'}`);
 
   if (!ctx.isOwner(ctx.sender)) return ctx.reply('🔒 Only the bot owner can check or install dependency updates.');
