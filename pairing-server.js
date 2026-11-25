@@ -23,6 +23,7 @@ let pairStatus = 'idle';
 let pairError = '';
 let pairTextSent = false;
 let pairDocumentSent = false;
+let pairSessionSent = false;
 let pairExpiresAt = 0;
 let botProcess = null;
 let startLock = false;
@@ -74,7 +75,7 @@ async function startPairing(phone) {
     fs.rmSync(SESSION_DIR, { recursive: true, force: true });
     fs.mkdirSync(SESSION_DIR, { recursive: true });
   }
-  pairStatus = 'connecting'; pairingCode = ''; pairingPhone = number; pairError = ''; pairTextSent = false; pairDocumentSent = false;
+  pairStatus = 'connecting'; pairingCode = ''; pairingPhone = number; pairError = ''; pairTextSent = false; pairDocumentSent = false; pairSessionSent = false;
   const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
   let version;
   try { ({ version } = await fetchLatestBaileysVersion()); } catch {}
@@ -84,6 +85,7 @@ async function startPairing(phone) {
     browser: Browsers.ubuntu('Chrome'), markOnlineOnConnect: false, syncFullHistory: false
   });
   pairSocket = sock;
+  let deliveryStarted = false;
   pairExpiresAt = Date.now() + PAIRING_TIMEOUT_MS;
   const attemptTimer = setTimeout(async () => {
     if (pairSocket !== sock || ['linked', 'error'].includes(pairStatus)) return;
@@ -128,6 +130,8 @@ async function startPairing(phone) {
       }
     }
     if (update.connection === 'open') {
+      if (deliveryStarted) return;
+      deliveryStarted = true;
       clearTimeout(attemptTimer);
       pairStatus = 'sending_session';
       pairExpiresAt = 0;
@@ -138,10 +142,11 @@ async function startPairing(phone) {
           const recipient = getVerifiedRecipient(number, state.creds.me);
           const sessionId = await createAuthArchiveSessionId(SESSION_DIR);
           const delivery = await deliverSession(sock, recipient, sessionId);
+          pairSessionSent = delivery.sessionSent;
           pairTextSent = delivery.textSent;
           pairDocumentSent = delivery.documentSent;
           pairStatus = 'linked';
-          log.info({ wordDocumentAcknowledged: pairDocumentSent, plainTextAcknowledged: pairTextSent }, 'SESSION_ID delivery finished for the verified phone-number DM.');
+          log.info({ singleSessionMessageAcknowledged: pairSessionSent, wordDocumentAcknowledged: pairDocumentSent }, 'Single SESSION_ID delivery finished for the verified phone-number DM.');
         } catch (error) {
           pairStatus = 'error';
           pairError = 'WhatsApp linked, but SESSION_ID delivery failed. Check the entered number and connection, then contact the bot owner before retrying.';
@@ -172,7 +177,7 @@ const server = http.createServer(async (req, res) => {
       catch (error) { return json(res, 400, { error: error.message || 'Could not start pairing.' }); }
     }
     if (req.method === 'GET' && url.pathname === '/api/pair/status') {
-      return json(res, 200, { status: pairStatus, phone: pairingPhone, code: pairingCode, error: pairError, textSent: pairTextSent, documentSent: pairDocumentSent, expiresAt: pairExpiresAt });
+      return json(res, 200, { status: pairStatus, phone: pairingPhone, code: pairingCode, error: pairError, sessionSent: pairSessionSent, textSent: pairTextSent, documentSent: pairDocumentSent, expiresAt: pairExpiresAt });
     }
     return json(res, 404, { error: 'Not found' });
   }

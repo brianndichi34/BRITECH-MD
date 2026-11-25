@@ -46,15 +46,15 @@ test('session sender verifies the target number through the full paired identity
   assert.match(sender, /getVerifiedRecipient\(phone, state\.creds\.me\)/);
   assert.doesNotMatch(sender, /phone \+ '@s\.whatsapp\.net'/);
   assert.match(server, /getVerifiedRecipient\(number, state\.creds\.me\)/);
-  assert.match(server, /wordDocumentAcknowledged: pairDocumentSent/);
+  assert.match(server, /singleSessionMessageAcknowledged: pairSessionSent/);
   assert.match(server, /documentSent: pairDocumentSent/);
 });
 
 test('README documents secret handling and copyable SESSION_ID delivery', () => {
   const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
-  assert.match(readme, /separate plain-text message/);
+  assert.match(readme, /exactly one.*Word document/i);
   assert.match(readme, /Word document/i);
-  assert.match(readme, /long-press that message to copy it/i);
+  assert.match(readme, /Open the Word file to copy the complete value/i);
   assert.match(readme, /Keep the pairing code and run access private/);
 });
 
@@ -157,7 +157,7 @@ test('web pairing exports full auth data as a shorter BRITECH3 ID and the bot im
   }
 });
 
-test('Word document contains the complete SESSION_ID and delivery sends it before text', async () => {
+test('Word document contains the complete SESSION_ID and delivery sends exactly one message', async () => {
   const sessionId = 'BRITECH2:abc+/=XYZ';
   const document = await pairingSession.createSessionDocx(sessionId);
   const docx = await JSZip.loadAsync(document);
@@ -176,28 +176,23 @@ test('Word document contains the complete SESSION_ID and delivery sends it befor
   const result = await pairingSession.deliverSession(fakeSocket, '254712345678@s.whatsapp.net', sessionId);
   assert.equal(sent[0].payload.fileName, 'BRITECH-MD-SESSION_ID.docx');
   assert.equal(sent[0].payload.mimetype, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-  assert.equal(sent[1].payload.text.includes('SESSION_ID'), true);
-  assert.equal(sent[2].payload.text, sessionId);
+  assert.equal(sent.length, 1);
   assert.equal(sent.every(item => item.jid === '254712345678@s.whatsapp.net'), true);
   assert.equal(result.documentSent, true);
-  assert.equal(result.textSent, true);
+  assert.equal(result.sessionSent, true);
+  await assert.rejects(pairingSession.deliverSession(fakeSocket, '254712345678@s.whatsapp.net', sessionId), /already started/);
 });
 
-test('text delivery failure is reported, and local message creation is not treated as server acknowledgement', async () => {
+test('single-document delivery failure is reported, and local message creation is not treated as server acknowledgement', async () => {
   const sent = [];
   const ev = new EventEmitter();
   const fakeSocket = { ev, async sendMessage(_jid, payload) {
     sent.push(payload);
     const id = `message-${sent.length}`;
-    if (sent.length !== 3) queueMicrotask(() => ev.emit('messages.update', [{ key: { id }, update: { status: 2 } }]));
-    if (sent.length === 3) throw new Error('message too long');
+    throw new Error('document rejected');
     return { key: { id } };
   } };
-  const result = await pairingSession.deliverSession(fakeSocket, '254712345678@s.whatsapp.net', 'BRITECH2:large-payload');
-  assert.equal(sent[0].fileName, 'BRITECH-MD-SESSION_ID.docx');
-  assert.equal(result.documentId, 'message-1');
-  assert.equal(result.textSent, false);
-  assert.match(result.textError, /message too long/);
+  await assert.rejects(pairingSession.deliverSession(fakeSocket, '254712345678@s.whatsapp.net', 'BRITECH2:large-payload'), /document rejected/);
   const unacked = await pairingSession.sendAndConfirm({ ev: new EventEmitter(), async sendMessage() { return { key: { id: 'local-only' } }; } }, '254712345678@s.whatsapp.net', { text: 'not acked' }, 5);
   assert.deepEqual(unacked, { id: 'local-only', acknowledged: false });
 });
@@ -216,9 +211,8 @@ test('GitHub Actions makes a compact archive ID and does not hide delivery outco
   assert.doesNotMatch(workflow, /continue-on-error: true/);
   assert.match(sender, /deliverSession\(sock, recipient, sessionId\)/);
   assert.match(server, /deliverSession\(sock, recipient, sessionId\)/);
-  assert.match(sender, /word document did not receive a WhatsApp server acknowledgement/i);
-  assert.match(dashboard, /data\.documentSent/);
-  assert.match(dashboard, /data\.textSent/);
+  assert.match(sender, /single SESSION_ID Word document/i);
+  assert.match(dashboard, /one SESSION_ID Word document/i);
   assert.match(dashboard, /WhatsApp acknowledged/);
 });
 

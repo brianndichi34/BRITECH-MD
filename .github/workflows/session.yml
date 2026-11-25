@@ -52,7 +52,7 @@ jobs:
             echo ""
             echo "- WhatsApp registration was verified from the saved credentials."
             echo "- Encrypted SESSION_ID and auth-folder backup are uploaded as short-lived artifacts."
-            echo "- The SESSION_ID is delivered as a Word document and attempted as a separate plain-text WhatsApp message in the verified self-chat."
+            echo "- Exactly one SESSION_ID Word document is delivered to the verified self-chat."
             echo "- No session ID or pairing code is printed in Actions logs."
             echo "- Treat the SESSION_ID file as a password."
           } >> "$GITHUB_STEP_SUMMARY"
@@ -70,7 +70,7 @@ jobs:
           path: session-auth.zip.enc
           retention-days: 1
           if-no-files-found: error
-      - name: Send SESSION_ID Word document and plain text to the verified self-chat
+      - name: Send one SESSION_ID Word document to the verified self-chat
         env:
           PHONE_NUMBER: ${{ inputs.phone_number }}
           SESSION_DIR: ./session/auth

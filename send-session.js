@@ -41,10 +41,8 @@ const { getVerifiedRecipient, deliverSession } = require('./lib/pairing-session'
 
     const recipient = getVerifiedRecipient(phone, state.creds.me);
     const delivery = await deliverSession(sock, recipient, sessionId);
-    if (delivery.documentSent) console.log('WhatsApp server acknowledged the SESSION_ID Word document for the verified phone-number DM.');
-    else console.warn('The Word document did not receive a WhatsApp server acknowledgement: ' + delivery.documentError);
-    if (delivery.textSent) console.log('WhatsApp server acknowledged the separate plain-text SESSION_ID message(s). The value is not printed in Actions logs.');
-    else console.warn('The separate plain-text SESSION_ID message(s) were not all acknowledged. ' + delivery.textError);
+    if (delivery.sessionSent) console.log('WhatsApp server acknowledged the single SESSION_ID Word document for the verified phone-number DM.');
+    else throw new Error(delivery.documentError || 'The single SESSION_ID delivery was not acknowledged.');
   } finally {
     try { await sock.end(undefined); } catch {}
   }
