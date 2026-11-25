@@ -83,6 +83,8 @@ npm run session
 
 Enter the international WhatsApp number when prompted, then follow the pairing instructions printed in the terminal. Do not run the session generator and bot simultaneously against the same auth folder.
 
+After a successful link, the generator writes a complete, compact `BRITECH3:` value to `SESSION_ID.txt` (or the path set by `SESSION_ID_FILE`). Keep this file private; it contains the full WhatsApp auth material needed to restore the session on a host.
+
 **Existing session safety:** the generator refuses to overwrite a non-empty auth folder by default. Back up existing credentials before intentionally replacing them; never share them.
 
 ## KataBump deployment

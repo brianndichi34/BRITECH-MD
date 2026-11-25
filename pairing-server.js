@@ -14,6 +14,9 @@ const HOST = '0.0.0.0';
 const TOKEN = process.env.PAIRING_DASHBOARD_TOKEN || '';
 const SESSION_DIR = path.resolve(process.env.SESSION_DIR || './session/auth');
 const PUBLIC_DIR = path.join(__dirname, 'pairing-web');
+const configuredPairingTimeout = Number(process.env.PAIRING_TIMEOUT_MS);
+const PAIRING_TIMEOUT_MS = Number.isFinite(configuredPairingTimeout) && configuredPairingTimeout > 0
+  ? Math.max(60_000, configuredPairingTimeout) : 5 * 60 * 1000;
 const log = pino({ level: process.env.LOG_LEVEL || 'info' });
 let pairSocket = null;
 let pairingCode = '';
@@ -22,6 +25,7 @@ let pairStatus = 'idle';
 let pairError = '';
 let pairTextSent = false;
 let pairDocumentSent = false;
+let pairExpiresAt = 0;
 let botProcess = null;
 let startLock = false;
 
@@ -81,6 +85,18 @@ async function startPairing(phone) {
     browser: Browsers.ubuntu('Chrome'), markOnlineOnConnect: false, syncFullHistory: false
   });
   pairSocket = sock;
+  pairExpiresAt = Date.now() + PAIRING_TIMEOUT_MS;
+  const attemptTimer = setTimeout(async () => {
+    if (pairSocket !== sock || ['linked', 'error'].includes(pairStatus)) return;
+    pairStatus = 'error';
+    pairingCode = '';
+    pairError = 'Pairing timed out. Start a fresh attempt and enter the newest code promptly.';
+    log.warn('Pairing attempt expired before WhatsApp confirmed the link.');
+    pairSocket = null;
+    pairExpiresAt = 0;
+    try { await sock.end(undefined); } catch {}
+    if (!state.creds.registered) fs.rmSync(SESSION_DIR, { recursive: true, force: true });
+  }, PAIRING_TIMEOUT_MS);
   sock.ev.on('creds.update', saveCreds);
   sock.ev.on('connection.update', async update => {
     if (update.connection === 'connecting' && !pairingCode && !state.creds.registered) {
@@ -101,13 +117,17 @@ async function startPairing(phone) {
       if (!pairingCode && pairSocket === sock) {
         pairError = lastError?.message || 'Could not request a pairing code. Start a fresh attempt.';
         pairStatus = 'error';
+        clearTimeout(attemptTimer);
+        pairExpiresAt = 0;
         log.error({ message: pairError }, 'Pair-code request failed');
         try { sock.end(undefined); } catch {}
         pairSocket = null;
       }
     }
     if (update.connection === 'open') {
+      clearTimeout(attemptTimer);
       pairStatus = 'sending_session';
+      pairExpiresAt = 0;
       pairingCode = '';
       log.info('WhatsApp pairing confirmed.');
       setTimeout(async () => {
@@ -132,9 +152,10 @@ async function startPairing(phone) {
       }, 1200);
     }
     if (update.connection === 'close' && pairStatus !== 'linked') {
+      clearTimeout(attemptTimer);
       const status = update.lastDisconnect?.error?.output?.statusCode;
       pairError = status === DisconnectReason.loggedOut ? 'WhatsApp rejected the session. Remove old linked devices and try again.' : 'WhatsApp connection closed. Start a fresh pairing attempt.';
-      pairStatus = 'error'; pairingCode = ''; pairSocket = null;
+      pairStatus = 'error'; pairingCode = ''; pairSocket = null; pairExpiresAt = 0;
       if (!state.creds.registered) fs.rmSync(SESSION_DIR, { recursive: true, force: true });
     }
   });
@@ -148,7 +169,7 @@ const server = http.createServer(async (req, res) => {
       catch (error) { return json(res, 400, { error: error.message || 'Could not start pairing.' }); }
     }
     if (req.method === 'GET' && url.pathname === '/api/pair/status') {
-      return json(res, 200, { status: pairStatus, phone: pairingPhone, code: pairingCode, error: pairError, textSent: pairTextSent, documentSent: pairDocumentSent });
+      return json(res, 200, { status: pairStatus, phone: pairingPhone, code: pairingCode, error: pairError, textSent: pairTextSent, documentSent: pairDocumentSent, expiresAt: pairExpiresAt });
     }
     return json(res, 404, { error: 'Not found' });
   }

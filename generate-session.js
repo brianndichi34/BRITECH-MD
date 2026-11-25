@@ -6,7 +6,7 @@ const pino = require('pino');
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
-const zlib = require('zlib');
+const { createAuthArchiveSessionId } = require('./lib/pairing-session');
 
 const sessionDir = path.resolve(process.env.SESSION_DIR || './session/auth');
 const sessionIdPath = path.resolve(process.env.SESSION_ID_FILE || './SESSION_ID.txt');
@@ -149,12 +149,12 @@ function publishPairingCode(code) {
     if (!linkedState?.creds.registered) throw new Error('WhatsApp connection opened but registration was not saved. Please run pairing again.');
     fs.writeFileSync(path.join(path.dirname(sessionDir), 'SESSION_INFO.txt'),
       'BRITECH MD session created: ' + new Date().toISOString() + '\nAuth folder: ' + sessionDir + '\nKeep the entire auth folder private. Never commit or share it.\n');
-    // Compressed + prefixed SESSION_ID (shorter, easy to paste on hosts)
-    const credsRaw = fs.readFileSync(path.join(sessionDir, 'creds.json'));
-    const compressed = zlib.deflateSync(credsRaw);
-    fs.writeFileSync(sessionIdPath, 'BRITECH:\~' + compressed.toString('base64'));
+    // Export the complete auth folder so deployments can restore all keys.
+    // BRITECH3 is compact, versioned, and avoids the legacy credentials-only format.
+    const sessionId = await createAuthArchiveSessionId(sessionDir);
+    fs.writeFileSync(sessionIdPath, sessionId + '\n', { mode: 0o600 });
     console.log('WhatsApp linked successfully. Authentication files saved.');
-    console.log('The workflow will now package and encrypt the complete auth folder for SESSION_ID export.');
+    console.log('A complete BRITECH3 SESSION_ID was written to the configured private output file.');
   } finally {
     try { await linkedSocket.end(undefined); } catch {}
     rl.close();

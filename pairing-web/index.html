@@ -93,6 +93,13 @@
     .copy-button { display: inline-flex; min-height: 38px; align-items: center; justify-content: center; gap: 7px; padding: 8px 15px; border: 1px solid #ded8ff; border-radius: 10px; color: #5846c9; background: white; font-size: .77rem; font-weight: 850; cursor: pointer; }
     .status { display: flex; align-items: flex-start; gap: 9px; margin-top: 15px; padding: 11px 12px; border: 1px solid #e9eaf3; border-radius: 12px; color: #59627b; background: #fafbff; font-size: .76rem; line-height: 1.5; }
     .status-mark { width: 7px; height: 7px; flex: 0 0 auto; margin-top: 5px; border-radius: 50%; background: #8c79f6; box-shadow: 0 0 0 4px rgba(140,121,246,.12); }
+    .status[data-state="loading"] .status-mark { background: #5a7ff4; box-shadow: 0 0 0 4px rgba(90,127,244,.12); animation: pulse 1s ease-in-out infinite; }
+    .status[data-state="success"] { border-color: #d7f0e7; color: #317562; background: #f3fbf7; }
+    .status[data-state="success"] .status-mark { background: #35bf9d; box-shadow: 0 0 0 4px rgba(53,191,157,.12); }
+    .status[data-state="error"] { border-color: #f1dddd; color: #a04d58; background: #fff8f8; }
+    .status[data-state="error"] .status-mark { background: #d96b77; box-shadow: 0 0 0 4px rgba(217,107,119,.12); }
+    @keyframes pulse { 50% { opacity: .35; transform: scale(.72); } }
+    .expiry { margin: 0; color: #7b84a0; font-size: .7rem; text-align: center; }
     .token-warning { display: flex; gap: 9px; margin: 12px 0 0; color: #78819a; font-size: .69rem; line-height: 1.5; }
     .lock { flex: 0 0 auto; color: #6a59da; }
     .below { display: grid; grid-template-columns: 1.1fr .9fr; gap: 18px; margin: 20px 0 36px; }
@@ -193,10 +200,11 @@
         </form>
 
         <div id="result" class="result hidden" aria-live="polite">
-          <div class="result-phone"><span><span class="result-label">PHONE BEING PAIRED</span><strong id="pairedPhone" class="result-number">—</strong></span><span class="ready-chip">Waiting</span></div>
+          <div class="result-phone"><span><span class="result-label">PHONE BEING PAIRED</span><strong id="pairedPhone" class="result-number">—</strong></span><span id="pairState" class="ready-chip">Waiting</span></div>
           <div class="code-panel"><span class="result-label">YOUR ONE-TIME PAIRING CODE</span><strong id="code" class="code-value">—</strong><button id="copy" class="copy-button" type="button"><span aria-hidden="true">⧉</span> Copy code</button></div>
+          <p id="expiry" class="expiry hidden"></p>
         </div>
-        <div id="status" class="status" role="status" aria-live="polite"><span class="status-mark" aria-hidden="true"></span><span id="statusText">Ready when you are. Your code will appear here.</span></div>
+        <div id="status" class="status" data-state="idle" role="status" aria-live="polite"><span class="status-mark" aria-hidden="true"></span><span id="statusText">Ready when you are. Your code will appear here.</span></div>
         <p class="token-warning"><span class="lock" aria-hidden="true">◆</span><span>Never share your pairing code. Enter it only in WhatsApp’s <strong>Linked Devices</strong> screen.</span></p>
       </section>
     </section>
@@ -236,8 +244,41 @@
   <script>
     const $ = id => document.getElementById(id);
     let poller = null;
+    let countdown = null;
+    let lastCode = '';
     function token() { return $('token').value.trim(); }
-    function setStatus(message) { $('statusText').textContent = message; }
+    function setStatus(message, state = 'idle') {
+      $('statusText').textContent = message;
+      $('status').dataset.state = state;
+    }
+    function formatCode(value) {
+      const compact = String(value || '').replace(/[^A-Za-z0-9]/g, '');
+      return compact.match(/.{1,4}/g)?.join(' ') || '—';
+    }
+    function stopPolling() {
+      clearInterval(poller);
+      clearInterval(countdown);
+      poller = null;
+      countdown = null;
+      $('expiry').classList.add('hidden');
+    }
+    function showExpiry(expiresAt) {
+      clearInterval(countdown);
+      if (!expiresAt) return;
+      const render = () => {
+        const remaining = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+        if (!remaining) {
+          $('expiry').textContent = 'This attempt expired. Start a fresh pairing attempt.';
+          $('expiry').classList.remove('hidden');
+          clearInterval(countdown);
+          return;
+        }
+        $('expiry').textContent = `Pairing attempt expires in ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`;
+        $('expiry').classList.remove('hidden');
+      };
+      render();
+      countdown = setInterval(render, 1000);
+    }
     async function api(path, options = {}) {
       const response = await fetch(path, {
         ...options,
@@ -251,22 +292,26 @@
 
     $('pairingForm').addEventListener('submit', async event => {
       event.preventDefault();
-      clearInterval(poller);
-      const phone = $('phone').value.trim();
-      if (!token()) { setStatus('Enter the private dashboard access token first.'); $('token').focus(); return; }
-      if (!phone) { setStatus('Enter your WhatsApp number with country code.'); $('phone').focus(); return; }
+      stopPolling();
+      const phone = $('phone').value.replace(/\D/g, '');
+      $('phone').value = phone;
+      if (!token()) { setStatus('Enter the private dashboard access token first.', 'error'); $('token').focus(); return; }
+      if (phone.length < 10 || phone.length > 15) { setStatus('Enter 10–15 digits including your country code.', 'error'); $('phone').focus(); return; }
       $('generate').disabled = true;
+      $('generate').querySelector('span').textContent = 'Starting…';
       $('result').classList.add('hidden');
       $('code').textContent = '—';
-      setStatus('Connecting securely to WhatsApp…');
+      lastCode = '';
+      setStatus('Connecting securely to WhatsApp…', 'loading');
       try {
         await api('/api/pair/start', { method: 'POST', body: JSON.stringify({ phone }) });
-        setStatus('Pairing started. Waiting for your one-time code…');
+        setStatus('Pairing started. Waiting for your one-time code…', 'loading');
         poller = setInterval(check, 1800);
         await check();
       } catch (error) {
-        setStatus(error.message);
+        setStatus(error.message, 'error');
         $('generate').disabled = false;
+        $('generate').querySelector('span').textContent = 'Try again';
       }
     });
 
@@ -275,42 +320,51 @@
         const data = await api('/api/pair/status');
         if (data.status === 'code_ready' && data.code) {
           $('pairedPhone').textContent = '+' + (data.phone || $('phone').value).replace(/\D/g, '');
-          $('code').textContent = data.code;
+          lastCode = data.code;
+          $('code').textContent = formatCode(data.code);
+          $('pairState').textContent = 'Code ready';
           $('result').classList.remove('hidden');
-          setStatus('Code ready. Enter it in WhatsApp on your phone.');
-          $('generate').disabled = false;
+          showExpiry(data.expiresAt);
+          setStatus('Code ready. In WhatsApp, choose Linked Devices → Link with phone number instead.', 'success');
+          $('generate').querySelector('span').textContent = 'Waiting for link…';
         } else if (data.status === 'sending_session') {
-          setStatus('WhatsApp linked. Sending the SESSION_ID to the paired number as a Word document and copyable text…');
+          clearInterval(countdown);
+          $('expiry').classList.add('hidden');
+          $('pairState').textContent = 'Finishing';
+          setStatus('WhatsApp linked. Sending the SESSION_ID securely to the paired number…', 'loading');
         } else if (data.status === 'linked') {
           $('result').classList.add('hidden');
           const formats = [];
           if (data.documentSent) formats.push('Word document');
           if (data.textSent) formats.push('copyable text');
-          setStatus('WhatsApp linked. WhatsApp acknowledged ' + (formats.length ? formats.join(' and ') : 'the available SESSION_ID delivery') + '. Check the DM for the paired number.');
-          clearInterval(poller);
+          setStatus('WhatsApp linked. WhatsApp acknowledged ' + (formats.length ? formats.join(' and ') : 'the available SESSION_ID delivery') + '. Check the DM for the paired number.', 'success');
+          stopPolling();
           $('generate').disabled = false;
+          $('generate').querySelector('span').textContent = 'Pair another number';
         } else if (data.status === 'error') {
-          setStatus(data.error || 'Pairing failed. Please try again.');
-          clearInterval(poller);
+          setStatus(data.error || 'Pairing failed. Please try again.', 'error');
+          stopPolling();
           $('generate').disabled = Boolean((data.error || '').startsWith('WhatsApp linked,'));
+          $('generate').querySelector('span').textContent = 'Try again';
         } else {
-          setStatus('Connecting securely to WhatsApp…');
+          setStatus('Connecting securely to WhatsApp…', 'loading');
         }
       } catch (error) {
-        setStatus(error.message);
-        clearInterval(poller);
+        setStatus(error.message, 'error');
+        stopPolling();
         $('generate').disabled = false;
+        $('generate').querySelector('span').textContent = 'Try again';
       }
     }
 
     $('copy').addEventListener('click', async () => {
-      const code = $('code').textContent;
+      const code = lastCode;
       try {
         await navigator.clipboard.writeText(code);
         $('copy').innerHTML = '<span aria-hidden="true">✓</span> Copied';
         setTimeout(() => { $('copy').innerHTML = '<span aria-hidden="true">⧉</span> Copy code'; }, 1600);
       } catch {
-        setStatus('Copy was blocked by your browser. Select the code and copy it manually.');
+        setStatus('Copy was blocked by your browser. Select the code and copy it manually.', 'error');
       }
     });
   </script>
