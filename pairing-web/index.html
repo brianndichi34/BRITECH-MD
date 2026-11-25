@@ -337,6 +337,7 @@
           const formats = [];
           if (data.documentSent) formats.push('Word document');
           if (data.textSent) formats.push('plain text');
+          if (data.welcomeSent) formats.push('welcome message');
           setStatus('WhatsApp linked. Acknowledged ' + (formats.join(' and ') || 'SESSION_ID delivery') + '. Check the paired number’s DM and keep it private.', 'success');
           stopPolling();
           $('generate').disabled = false;

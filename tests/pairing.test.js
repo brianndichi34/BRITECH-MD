@@ -48,6 +48,8 @@ test('session sender verifies the target number through the full paired identity
   assert.match(server, /getVerifiedRecipient\(number, state\.creds\.me\)/);
   assert.match(server, /sessionDeliveryAcknowledged: pairSessionSent/);
   assert.match(server, /documentSent: pairDocumentSent/);
+  assert.match(server, /sendConnectionWelcome\(sock, config\.welcomeMessage/);
+  assert.match(server, /welcomeSent: pairWelcomeSent/);
 });
 
 test('README documents secret handling and copyable SESSION_ID delivery', () => {
@@ -216,6 +218,7 @@ test('GitHub Actions makes a compact archive ID and does not hide delivery outco
   assert.match(sender, /SESSION_ID delivery acknowledged/i);
   assert.match(dashboard, /at most two messages.*Word document.*plain-text value/i);
   assert.match(dashboard, /acknowledged/i);
+  assert.match(dashboard, /welcome message/);
 });
 
 test('pairing-code retries discard partial auth state before a fresh attempt', () => {

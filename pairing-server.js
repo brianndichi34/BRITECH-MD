@@ -4,8 +4,10 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 const pino = require('pino');
+const config = require('./lib/config');
 const { createAuthArchiveSessionId, getVerifiedRecipient, deliverSession, normalizePhone } = require('./lib/pairing-session');
 const { loadBaileys } = require('./lib/baileys');
+const { sendConnectionWelcome } = require('./lib/connection-welcome');
 
 const PORT = Number(process.env.PORT || process.env.PAIRING_PORT || 3000);
 const HOST = '0.0.0.0';
@@ -24,6 +26,7 @@ let pairError = '';
 let pairTextSent = false;
 let pairDocumentSent = false;
 let pairSessionSent = false;
+let pairWelcomeSent = false;
 let pairExpiresAt = 0;
 let botProcess = null;
 let startLock = false;
@@ -75,7 +78,7 @@ async function startPairing(phone) {
     fs.rmSync(SESSION_DIR, { recursive: true, force: true });
     fs.mkdirSync(SESSION_DIR, { recursive: true });
   }
-  pairStatus = 'connecting'; pairingCode = ''; pairingPhone = number; pairError = ''; pairTextSent = false; pairDocumentSent = false; pairSessionSent = false;
+  pairStatus = 'connecting'; pairingCode = ''; pairingPhone = number; pairError = ''; pairTextSent = false; pairDocumentSent = false; pairSessionSent = false; pairWelcomeSent = false;
   const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
   let version;
   try { ({ version } = await fetchLatestBaileysVersion()); } catch {}
@@ -145,8 +148,13 @@ async function startPairing(phone) {
           pairSessionSent = delivery.sessionSent;
           pairTextSent = delivery.textSent;
           pairDocumentSent = delivery.documentSent;
+          const welcome = await sendConnectionWelcome(sock, config.welcomeMessage, {
+            stateDir: path.dirname(SESSION_DIR),
+            logger: log
+          });
+          pairWelcomeSent = welcome.sent;
           pairStatus = 'linked';
-          log.info({ sessionDeliveryAcknowledged: pairSessionSent, wordDocumentAcknowledged: pairDocumentSent, plainTextAcknowledged: pairTextSent }, 'SESSION_ID delivery finished with at most one Word document and one plain-text message.');
+          log.info({ sessionDeliveryAcknowledged: pairSessionSent, wordDocumentAcknowledged: pairDocumentSent, plainTextAcknowledged: pairTextSent, welcomeSent: pairWelcomeSent }, 'SESSION_ID delivery and linked-account welcome finished.');
         } catch (error) {
           pairStatus = 'error';
           pairError = 'WhatsApp linked, but SESSION_ID delivery failed. Check the entered number and connection, then contact the bot owner before retrying.';
@@ -177,7 +185,7 @@ const server = http.createServer(async (req, res) => {
       catch (error) { return json(res, 400, { error: error.message || 'Could not start pairing.' }); }
     }
     if (req.method === 'GET' && url.pathname === '/api/pair/status') {
-      return json(res, 200, { status: pairStatus, phone: pairingPhone, code: pairingCode, error: pairError, sessionSent: pairSessionSent, textSent: pairTextSent, documentSent: pairDocumentSent, expiresAt: pairExpiresAt });
+      return json(res, 200, { status: pairStatus, phone: pairingPhone, code: pairingCode, error: pairError, sessionSent: pairSessionSent, textSent: pairTextSent, documentSent: pairDocumentSent, welcomeSent: pairWelcomeSent, expiresAt: pairExpiresAt });
     }
     return json(res, 404, { error: 'Not found' });
   }
