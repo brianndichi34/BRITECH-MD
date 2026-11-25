@@ -46,15 +46,15 @@ test('session sender verifies the target number through the full paired identity
   assert.match(sender, /getVerifiedRecipient\(phone, state\.creds\.me\)/);
   assert.doesNotMatch(sender, /phone \+ '@s\.whatsapp\.net'/);
   assert.match(server, /getVerifiedRecipient\(number, state\.creds\.me\)/);
-  assert.match(server, /singleSessionMessageAcknowledged: pairSessionSent/);
+  assert.match(server, /sessionDeliveryAcknowledged: pairSessionSent/);
   assert.match(server, /documentSent: pairDocumentSent/);
 });
 
 test('README documents secret handling and copyable SESSION_ID delivery', () => {
   const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
-  assert.match(readme, /exactly one.*Word document/i);
+  assert.match(readme, /at most two.*Word document.*plain-text message/i);
   assert.match(readme, /Word document/i);
-  assert.match(readme, /Open the Word file to copy the complete value/i);
+  assert.match(readme, /Open the Word file or copy the plain-text value/i);
   assert.match(readme, /Keep the pairing code and run access private/);
 });
 
@@ -157,7 +157,7 @@ test('web pairing exports full auth data as a shorter BRITECH3 ID and the bot im
   }
 });
 
-test('Word document contains the complete SESSION_ID and delivery sends exactly one message', async () => {
+test('Word document contains the complete SESSION_ID and delivery sends at most two messages', async () => {
   const sessionId = 'BRITECH2:abc+/=XYZ';
   const document = await pairingSession.createSessionDocx(sessionId);
   const docx = await JSZip.loadAsync(document);
@@ -176,10 +176,12 @@ test('Word document contains the complete SESSION_ID and delivery sends exactly 
   const result = await pairingSession.deliverSession(fakeSocket, '254712345678@s.whatsapp.net', sessionId);
   assert.equal(sent[0].payload.fileName, 'BRITECH-MD-SESSION_ID.docx');
   assert.equal(sent[0].payload.mimetype, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-  assert.equal(sent.length, 1);
+  assert.equal(sent.length, 2);
+  assert.equal(sent[1].payload.text, sessionId);
   assert.equal(sent.every(item => item.jid === '254712345678@s.whatsapp.net'), true);
   assert.equal(result.documentSent, true);
   assert.equal(result.sessionSent, true);
+  assert.equal(result.textSent, true);
   await assert.rejects(pairingSession.deliverSession(fakeSocket, '254712345678@s.whatsapp.net', sessionId), /already started/);
 });
 
@@ -211,9 +213,9 @@ test('GitHub Actions makes a compact archive ID and does not hide delivery outco
   assert.doesNotMatch(workflow, /continue-on-error: true/);
   assert.match(sender, /deliverSession\(sock, recipient, sessionId\)/);
   assert.match(server, /deliverSession\(sock, recipient, sessionId\)/);
-  assert.match(sender, /single SESSION_ID Word document/i);
-  assert.match(dashboard, /one SESSION_ID Word document/i);
-  assert.match(dashboard, /WhatsApp acknowledged/);
+  assert.match(sender, /SESSION_ID delivery acknowledged/i);
+  assert.match(dashboard, /at most two messages.*Word document.*plain-text value/i);
+  assert.match(dashboard, /acknowledged/i);
 });
 
 test('pairing-code retries discard partial auth state before a fresh attempt', () => {

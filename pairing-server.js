@@ -146,7 +146,7 @@ async function startPairing(phone) {
           pairTextSent = delivery.textSent;
           pairDocumentSent = delivery.documentSent;
           pairStatus = 'linked';
-          log.info({ singleSessionMessageAcknowledged: pairSessionSent, wordDocumentAcknowledged: pairDocumentSent }, 'Single SESSION_ID delivery finished for the verified phone-number DM.');
+          log.info({ sessionDeliveryAcknowledged: pairSessionSent, wordDocumentAcknowledged: pairDocumentSent, plainTextAcknowledged: pairTextSent }, 'SESSION_ID delivery finished with at most one Word document and one plain-text message.');
         } catch (error) {
           pairStatus = 'error';
           pairError = 'WhatsApp linked, but SESSION_ID delivery failed. Check the entered number and connection, then contact the bot owner before retrying.';

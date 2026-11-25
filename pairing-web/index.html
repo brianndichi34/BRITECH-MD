@@ -234,7 +234,7 @@
           <div class="feature"><span class="feature-icon" aria-hidden="true">⌘</span><span><strong>Command menu</strong><small>Send .menu to explore commands</small></span></div>
           <div class="feature"><span class="feature-icon" aria-hidden="true">✦</span><span><strong>Bot Doctor</strong><small>Diagnostics and safe repair guidance</small></span></div>
         </div>
-        <div class="delivery"><strong>SESSION_ID delivery:</strong> after WhatsApp confirms the link, the bot sends exactly one Word document containing the complete session value to the paired number’s WhatsApp DM. Treat it like a password.</div>
+        <div class="delivery"><strong>SESSION_ID delivery:</strong> after WhatsApp confirms the link, the bot sends at most two messages to the paired number’s WhatsApp DM: one Word document and one complete plain-text value. It never sends a notice or chunks. Treat the SESSION_ID like a password.</div>
       </article>
     </section>
 
@@ -334,7 +334,10 @@
           setStatus('WhatsApp linked. Sending the SESSION_ID securely to the paired number…', 'loading');
         } else if (data.status === 'linked') {
           $('result').classList.add('hidden');
-          setStatus('WhatsApp linked. WhatsApp acknowledged one SESSION_ID Word document. Check the paired number’s DM and keep it private.', 'success');
+          const formats = [];
+          if (data.documentSent) formats.push('Word document');
+          if (data.textSent) formats.push('plain text');
+          setStatus('WhatsApp linked. Acknowledged ' + (formats.join(' and ') || 'SESSION_ID delivery') + '. Check the paired number’s DM and keep it private.', 'success');
           stopPolling();
           $('generate').disabled = false;
           $('generate').querySelector('span').textContent = 'Pair another number';
