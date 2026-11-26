@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/brianndichi34/BRITECH-MD/fork"><img alt="Fork" src="https://img.shields.io/badge/FORK-BRITECH%20MD-8250df?style=for-the-badge"></a>
-  <a href="#silva-host-deployment-and-get-session-id"><img alt="Pairing dashboard" src="https://img.shields.io/badge/PAIRING-DASHBOARD-238636?style=for-the-badge"></a>
+  <a href="https://silva-orbit-zeno-776-e7a8c83126bd.herokuapp.com/#pair-code"><img alt="Pairing dashboard" src="https://img.shields.io/badge/PAIRING-DASHBOARD-238636?style=for-the-badge"></a>
   <a href="https://github.com/brianndichi34/BRITECH-MD/archive/refs/heads/main.zip"><img alt="Download ZIP" src="https://img.shields.io/badge/DOWNLOAD-ZIP-0969da?style=for-the-badge"></a>
   <a href="https://github.com/brianndichi34/BRITECH-MD/actions/workflows/ci.yml"><img alt="Tests" src="https://img.shields.io/badge/TESTS-GITHUB%20ACTIONS-1f6feb?style=for-the-badge"></a>
 </p>
@@ -61,7 +61,7 @@ The automated test suite checks the pairing display/copy controls, BRITECH sessi
 
 ### Recommended: deployed pairing dashboard
 
-Deploy the long-running app, open its assigned app URL, and use the **Pair Code** tab followed by **Generate Session ID**. These are local dashboard controls that call the app's protected API; they do not open GitHub Actions, create a workflow, or create a Manus task. On Silva Host, follow [Silva Host deployment and Get Session ID](#silva-host-deployment-and-get-session-id). Set `PAIRING_DASHBOARD_TOKEN` on private deployments, or intentionally leave it empty for public mode.
+Deploy the long-running app, then open the direct [BRITECH-MD pairing dashboard](https://silva-orbit-zeno-776-e7a8c83126bd.herokuapp.com/#pair-code). It opens on the **Pair Code** tab; use **Generate Session ID** after linking. These are local dashboard controls that call the app's protected API; they do not open GitHub Actions, create a workflow, or create a Manus task. Set `PAIRING_DASHBOARD_TOKEN` on private deployments, or intentionally leave it empty for public mode.
 
 ### Optional fallback: GitHub Actions (private repository)
 
@@ -99,7 +99,7 @@ After a successful link, the generator writes a complete, compact `BRITECH3:` va
 
 ## Silva Host deployment and Get Session ID
 
-Silva Host starts `npm start`, which now launches the pairing dashboard at the deployed app URL. The app can be deployed with `SESSION_ID` blank; open the deployed URL and use **Pair Code** or **Generate Session ID** to link WhatsApp and receive the complete session ID privately. If `SESSION_ID` is already configured, the dashboard imports it safely and starts the bot after the existing session is found. Set `PAIRING_DASHBOARD_TOKEN` in Silva Host for private access. Keep `SESSION_DIR=/app/session/auth` on persistent storage; the bot creates the directory and enforces mode `0700` for directories and `0600` for auth files after imports and credential updates. If the host reports a truncated SESSION_ID, clear that variable before starting a fresh pairing.
+Silva Host starts `npm start`, which now launches the pairing dashboard at the deployed app URL. The current direct dashboard is [silva-orbit-zeno-776-e7a8c83126bd.herokuapp.com](https://silva-orbit-zeno-776-e7a8c83126bd.herokuapp.com/#pair-code); it opens on **Pair Code**. The app can be deployed with `SESSION_ID` blank; use **Pair Code** or **Generate Session ID** to link WhatsApp and receive the complete session ID privately. If `SESSION_ID` is already configured, the dashboard imports it safely and starts the bot after the existing session is found. Set `PAIRING_DASHBOARD_TOKEN` in Silva Host for private access. Keep `SESSION_DIR=/app/session/auth` on persistent storage; the bot creates the directory and enforces mode `0700` for directories and `0600` for auth files after imports and credential updates. If the host reports a truncated SESSION_ID, clear that variable before starting a fresh pairing.
 
 The Silva Host public share card is controlled by Silva Host itself and may continue to show only its platform-level **Deploy** button. The repository cannot add a button to Silva Host’s website UI. After deployment, the app’s own dashboard is the **Get Session ID / Pair Code** entry point.
 

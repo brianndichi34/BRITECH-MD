@@ -93,8 +93,10 @@ test('dashboard navigation stays local and never starts a Manus workflow or task
   const landingPage = fs.readFileSync(path.join(root, 'vercel-site/index.html'), 'utf8');
   assert.doesNotMatch(readme, /href="https:\/\/github\.com\/brianndichi34\/BRITECH-MD\/actions\/workflows\/session\.yml"/);
   assert.doesNotMatch(landingPage, /href="https:\/\/github\.com\/brianndichi34\/BRITECH-MD\/actions\/workflows\/session\.yml"/);
+  assert.match(readme, /https:\/\/silva-orbit-zeno-776-e7a8c83126bd\.herokuapp\.com\/#pair-code/);
+  assert.match(landingPage, /https:\/\/silva-orbit-zeno-776-e7a8c83126bd\.herokuapp\.com\/#pair-code/);
   assert.match(readme, /Recommended: deployed pairing dashboard/);
-  assert.match(landingPage, /Pairing Dashboard Setup/);
+  assert.match(landingPage, /Open Pairing Dashboard/);
 });
 
 test('session sender verifies the target number through the full paired identity', () => {
