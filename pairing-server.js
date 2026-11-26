@@ -67,7 +67,7 @@ async function launchBot() {
     if (!fs.existsSync(path.join(SESSION_DIR, 'creds.json'))) throw new Error('Registered credentials not found.');
     botProcess = spawn(process.execPath, ['index.js'], { cwd: __dirname, env: process.env, stdio: 'inherit' });
     botProcess.on('exit', (code) => { log.warn({ code }, 'Bot process stopped'); botProcess = null; });
-    log.info('BRITECH MD bot process started after pairing.');
+    log.info('BRITECH-NB bot process started after pairing.');
   } finally { startLock = false; }
 }
 async function startPairing(phone) {
@@ -219,7 +219,7 @@ const server = http.createServer(async (req, res) => {
   fs.createReadStream(target).pipe(res);
 });
 server.listen(PORT, HOST, async () => {
-  log.info({ port: PORT }, 'BRITECH MD pairing dashboard is online.');
+  log.info({ port: PORT }, 'BRITECH-NB pairing dashboard is online.');
   const creds = path.join(SESSION_DIR, 'creds.json');
   try {
     const imported = await hydrateSessionId(process.env.SESSION_ID, SESSION_DIR);

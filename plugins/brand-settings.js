@@ -96,7 +96,7 @@ async function setMenuProfile(ctx) {
   await fs.writeFile(MENU_PROFILE_PATH, image, { mode: 0o600 });
   const ownJid = ctx.sock.user?.id || `${ctx.config.ownerNumber}@s.whatsapp.net`;
   await ctx.sock.updateProfilePicture(ownJid, image);
-  return ctx.reply('✅ BRITECH MD profile picture updated. New .menu cards will use this image.');
+  return ctx.reply('✅ BRITECH-NB profile picture updated. New .menu cards will use this image.');
 }
 
 async function createManusTask(prompt) {
@@ -148,7 +148,7 @@ module.exports = {
   name: 'brand-and-manus',
   category: 'BRITECH / AI',
   commands: {
-    settings: 'Show BRITECH MD settings and feature status',
+    settings: 'Show BRITECH-NB settings and feature status',
     setmenuprofile: 'Set the bot WhatsApp/menu profile picture from a direct HTTPS image URL (owner only)',
     manus: 'Start a private Manus AI task and receive its task link (owner only; needs MANUS_API_KEY)',
     manuscheck: 'Check that the configured Manus API key is accepted without showing the key (owner only)'

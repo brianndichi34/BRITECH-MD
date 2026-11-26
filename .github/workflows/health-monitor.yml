@@ -1,8 +1,8 @@
-name: BRITECH MD — CI health monitor
+name: BRITECH-NB — CI health monitor
 
 on:
   workflow_run:
-    workflows: ["BRITECH MD — CI"]
+    workflows: ["BRITECH-NB — CI"]
     types: [completed]
   workflow_dispatch:
 
@@ -31,7 +31,7 @@ jobs:
               await github.rest.issues.createLabel({ owner: context.repo.owner, repo: context.repo.repo, name: 'automated-repair', color: 'D93F0B', description: 'Detected automatically by CI health monitoring' });
             }
             const body = [
-              'BRITECH MD CI reported a failure on the default branch.',
+              'BRITECH-NB CI reported a failure on the default branch.',
               '',
               `Run: ${runUrl}`,
               `Commit: ${run?.head_sha || 'manual health check'}`,

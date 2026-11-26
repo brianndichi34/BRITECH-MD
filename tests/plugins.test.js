@@ -89,7 +89,7 @@ test('QR plugin returns a real PNG and enforces bounded input size', async () =>
   await assert.rejects(media.createQrImage('x'.repeat(1501)), /1,500 bytes/);
   let payload;
   await media.handle('qr', {
-    query: 'BRITECH MD', chat: '254700000001@s.whatsapp.net', msg: { key: { id: 'qr' } },
+    query: 'BRITECH-NB', chat: '254700000001@s.whatsapp.net', msg: { key: { id: 'qr' } },
     config: { prefix: '.' }, sock: { async sendMessage(_chat, value) { payload = value; } }, async reply() {}
   });
   assert.equal((await sharp(payload.image).metadata()).format, 'png');
@@ -166,7 +166,7 @@ test('handler exposes plugin commands in menu/help while preserving existing dep
   await handleMessage(sock, { key: { remoteJid: '254700000001@s.whatsapp.net', fromMe: false }, message: { conversation: '.menu' }, messageTimestamp: Math.floor(Date.now() / 1000) });
   assert.ok(sent[0].payload.react, 'menu should be acknowledged with a reaction');
   assert.equal(sent[1].payload.image.length > 100, true, 'menu should use the generated branded avatar');
-  assert.match(sent[1].payload.caption, /BRITECH MD/);
+  assert.match(sent[1].payload.caption, /BRITECH-NB/);
   assert.match(sent[2].payload.text, /\.sticker/);
   assert.match(sent[2].payload.text, /\.poll/);
   for (const command of Object.keys(allCommands)) assert.ok(sent[2].payload.text.includes(`.${command}`), `menu must list .${command}`);
@@ -205,8 +205,8 @@ test('handler processes prefixed self-chat commands but ignores ordinary outgoin
 
   assert.equal(sent.length, 5);
   assert.ok(sent[0].payload.react);
-  assert.match(sent[1].payload.caption, /BRITECH MD/);
-  assert.match(sent[2].payload.text, /BRITECH MD/);
+  assert.match(sent[1].payload.caption, /BRITECH-NB/);
+  assert.match(sent[2].payload.text, /BRITECH-NB/);
   assert.ok(sent[3].payload.react);
   assert.match(sent[4].payload.text, /Pong!/);
   assert.ok(sent.every(item => item.chat === chat));
@@ -244,7 +244,7 @@ test('dispatcher replies to .menu sent from the linked account as an appended ep
   }], 'append');
   assert.equal(sent.length, 3);
   assert.ok(sent[0].payload.react);
-  assert.match(sent[1].payload.caption, /BRITECH MD/);
+  assert.match(sent[1].payload.caption, /BRITECH-NB/);
   assert.match(sent[2].payload.text, /GENERAL/);
 });
 
@@ -259,14 +259,14 @@ test('menu text still replies when avatar media sending fails', async () => {
   await handleMessage(sock, message);
   assert.equal(sent.length, 2);
   assert.ok(sent[0].payload.react);
-  assert.match(sent[1].payload.text, /BRITECH MD/);
+  assert.match(sent[1].payload.text, /BRITECH-NB/);
 });
 
 
 test('settings dashboard displays live protection, status, profile, and AI state', async () => {
   let text = '';
   await brandSettings.handle('settings', {
-    config: { botName: 'BRITECH MD', ownerName: 'Brian', prefix: '.', timezone: 'Africa/Nairobi', autoAntiDelete: true, autoViewStatus: true, autoLikeStatus: true, autoRead: false, openaiKey: '', manusApiKey: '' },
+    config: { botName: 'BRITECH-NB', ownerName: 'Brian', prefix: '.', timezone: 'Africa/Nairobi', autoAntiDelete: true, autoViewStatus: true, autoLikeStatus: true, autoRead: false, openaiKey: '', manusApiKey: '' },
     sock: { user: { id: '254717276195@s.whatsapp.net' } }, menuProfileAvailable: true,
     async reply(value) { text = value; }
   });

@@ -19,11 +19,11 @@ function publishPairingCode(code) {
   if (ciMode) {
     // GitHub renders this as a run annotation while the pairing step is still active.
     // This makes the code available before the generator's wait-for-link step completes.
-    console.log('::notice title=BRITECH MD pairing code::' + code);
+    console.log('::notice title=BRITECH-NB pairing code::' + code);
   }
   if (summaryPath) {
     fs.appendFileSync(summaryPath,
-      '\n## BRITECH MD pairing code\n\n' +
+      '\n## BRITECH-NB pairing code\n\n' +
       '> Use this code immediately in WhatsApp → Linked devices → Link with phone number instead.\n\n' +
       '`' + code + '`\n\n' +
       'This is a one-time code. Do not share screenshots or workflow access.\n');
@@ -33,7 +33,7 @@ function publishPairingCode(code) {
 
 (async () => {
   const { default: makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion, DisconnectReason, Browsers } = await import('@whiskeysockets/baileys');
-  console.log('BRITECH MD — WhatsApp session pairing');
+  console.log('BRITECH-NB — WhatsApp session pairing');
   console.log('On your phone: WhatsApp > Linked devices > Link with phone number instead.');
 
   if (fs.existsSync(sessionDir) && fs.readdirSync(sessionDir).length) {
@@ -146,7 +146,7 @@ function publishPairingCode(code) {
     await sleep(5000);
     if (!linkedState?.creds.registered) throw new Error('WhatsApp connection opened but registration was not saved. Please run pairing again.');
     fs.writeFileSync(path.join(path.dirname(sessionDir), 'SESSION_INFO.txt'),
-      'BRITECH MD session created: ' + new Date().toISOString() + '\nAuth folder: ' + sessionDir + '\nKeep the entire auth folder private. Never commit or share it.\n');
+      'BRITECH-NB session created: ' + new Date().toISOString() + '\nAuth folder: ' + sessionDir + '\nKeep the entire auth folder private. Never commit or share it.\n');
     // Export the complete auth folder so deployments can restore all keys.
     // BRITECH3 is compact, versioned, and avoids the legacy credentials-only format.
     const sessionId = await createAuthArchiveSessionId(sessionDir);

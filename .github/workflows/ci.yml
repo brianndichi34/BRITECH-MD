@@ -1,4 +1,4 @@
-name: BRITECH MD — CI
+name: BRITECH-NB — CI
 on:
   push:
     branches: [main]

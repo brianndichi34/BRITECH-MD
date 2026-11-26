@@ -1,7 +1,7 @@
 {
   "name": "britech-md",
   "version": "1.2.0",
-  "description": "BRITECH MD WhatsApp multi-device assistant",
+  "description": "BRITECH-NB WhatsApp multi-device assistant",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {

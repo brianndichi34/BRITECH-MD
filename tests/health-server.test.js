@@ -13,7 +13,7 @@ test('health server serves deployment probes on the configured port', async () =
   try {
     const response = await fetch(`http://127.0.0.1:${address.port}/healthz`);
     assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { ok: true, service: 'BRITECH MD' });
+    assert.deepEqual(await response.json(), { ok: true, service: 'BRITECH-NB' });
     assert.equal(logs.length, 1);
   } finally {
     await new Promise(resolve => server.close(resolve));
