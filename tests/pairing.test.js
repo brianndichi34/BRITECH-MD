@@ -95,6 +95,7 @@ test('dashboard navigation stays local and never starts a Manus workflow or task
   assert.match(fs.readFileSync(path.join(root, '.env.example'), 'utf8'), /PAIRING_DASHBOARD_URL=/);
   const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
   const landingPage = fs.readFileSync(path.join(root, 'vercel-site/index.html'), 'utf8');
+  const appJson = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'));
   assert.doesNotMatch(readme, /href="https:\/\/github\.com\/brianndichi34\/BRITECH-MD\/actions\/workflows\/session\.yml"/);
   assert.doesNotMatch(landingPage, /href="https:\/\/github\.com\/brianndichi34\/BRITECH-MD\/actions\/workflows\/session\.yml"/);
   assert.match(readme, /https:\/\/silva-orbit-zeno-776-e7a8c83126bd\.herokuapp\.com\/#pair-code/);
@@ -103,6 +104,9 @@ test('dashboard navigation stays local and never starts a Manus workflow or task
   assert.match(landingPage, /Open Pairing Dashboard/);
   assert.match(readme, /\[Silva Host\]\(https:\/\/host\.silvatech\.co\.ke\/apps\/deploy\/britech-md\)/);
   assert.match(landingPage, /href="https:\/\/host\.silvatech\.co\.ke\/apps\/deploy\/britech-md"[^>]*>Deploy on Silva Host/);
+  assert.equal(appJson.name, 'BRITECH-MD');
+  assert.match(appJson.logo, /raw\.githubusercontent\.com\/brianndichi34\/BRITECH-MD\/main\/assets\/britech-md-avatar\.png$/);
+  assert.equal(appJson.success_url, 'https://silva-orbit-zeno-776-e7a8c83126bd.herokuapp.com/#pair-code');
 });
 
 test('session sender verifies the target number through the full paired identity', () => {
