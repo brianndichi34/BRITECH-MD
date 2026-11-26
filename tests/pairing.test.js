@@ -146,7 +146,7 @@ test('dashboard only sends to the account whose PN alias matches the entered num
   assert.equal(pairingSession.getVerifiedRecipient('254712345678', { id: '254712345678:4@s.whatsapp.net' }), '254712345678@s.whatsapp.net');
   assert.throws(() => pairingSession.getVerifiedRecipient('254712345678', { id: '254700000000:4@s.whatsapp.net' }), /cannot be verified.*No session was sent/);
   assert.throws(() => pairingSession.getVerifiedRecipient('254712345678', { id: '123456789012345@lid' }), /cannot be verified.*No session was sent/);
-  assert.match(server, /createAuthArchiveSessionId\(pairingSessionDir\)/);
+  assert.match(server, /createAuthArchiveSessionId\(sessionDir\)/);
 });
 
 test('JID resolver normalizes phone, legacy c.us, hosted and mapped LID identities', () => {
@@ -319,8 +319,14 @@ test('web pairing keeps same-number and different-number sessions concurrently',
   assert.match(server, /const botProcesses = new Map\(\)/);
   assert.match(server, /registeredSessionDirs/);
   assert.match(server, /SESSION_DIR: resolved, PORT: ''/);
-  assert.match(server, /launchBot\(pairingSessionDir\)/);
   assert.doesNotMatch(server, /This service already has a registered WhatsApp session/);
+  assert.match(server, /const sessionDir = path\.join\(SESSION_DIR, `pairing-\$\{Date\.now\(\)\}-\$\{number\}`\)/);
+  assert.match(server, /useMultiFileAuthState\(sessionDir\)/);
+  assert.match(server, /createAuthArchiveSessionId\(sessionDir\)/);
+  assert.match(server, /stateDir: sessionDir/);
+  assert.match(server, /launchBot\(sessionDir\)/);
+  assert.doesNotMatch(server, /createAuthArchiveSessionId\(pairingSessionDir\)/);
+  assert.doesNotMatch(server, /launchBot\(pairingSessionDir\)/);
   assert.match(fs.readFileSync(path.join(root, 'index.js'), 'utf8'), /stateDir: config\.sessionDir/);
 });
 

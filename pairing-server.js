@@ -108,13 +108,14 @@ async function startPairing(phone) {
   const number = normalizePhone(phone);
   if (number.length < 10 || number.length > 15) throw new Error('Enter a valid international number with country code, digits only.');
   secureSessionDirectory(SESSION_DIR);
-  pairingSessionDir = path.join(SESSION_DIR, `pairing-${Date.now()}-${number}`);
-  secureSessionDirectory(pairingSessionDir);
+  const sessionDir = path.join(SESSION_DIR, `pairing-${Date.now()}-${number}`);
+  pairingSessionDir = sessionDir;
+  secureSessionDirectory(sessionDir);
   pairStatus = 'connecting'; pairingCode = ''; pairingPhone = number; pairError = ''; pairTextSent = false; pairDocumentSent = false; pairSessionSent = false; pairWelcomeSent = false;
-  const { state, saveCreds } = await useMultiFileAuthState(pairingSessionDir);
+  const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
   const savePrivateCreds = async () => {
     await saveCreds();
-    secureSessionDirectory(pairingSessionDir);
+    secureSessionDirectory(sessionDir);
   };
   let version;
   try { ({ version } = await fetchLatestBaileysVersion()); } catch {}
@@ -136,7 +137,7 @@ async function startPairing(phone) {
     pairAttemptTimer = null;
     pairExpiresAt = 0;
     try { await sock.end(undefined); } catch {}
-    if (!state.creds.registered) fs.rmSync(pairingSessionDir, { recursive: true, force: true });
+    if (!state.creds.registered) fs.rmSync(sessionDir, { recursive: true, force: true });
   }, PAIRING_TIMEOUT_MS);
   sock.ev.on('creds.update', savePrivateCreds);
   sock.ev.on('connection.update', async update => {
@@ -184,13 +185,13 @@ async function startPairing(phone) {
         if (pairSocket !== sock) return;
         try {
           const recipient = getVerifiedRecipient(number, state.creds.me);
-          const sessionId = await createAuthArchiveSessionId(pairingSessionDir);
+          const sessionId = await createAuthArchiveSessionId(sessionDir);
           const delivery = await deliverSession(sock, recipient, sessionId);
           pairSessionSent = delivery.sessionSent;
           pairTextSent = delivery.textSent;
           pairDocumentSent = delivery.documentSent;
           const welcome = await sendConnectionWelcome(sock, config.welcomeMessage, {
-            stateDir: pairingSessionDir,
+            stateDir: sessionDir,
             logger: log
           });
           pairWelcomeSent = welcome.sent;
@@ -205,7 +206,7 @@ async function startPairing(phone) {
           try { await sock.end(undefined); } catch {}
           pairSocket = null;
         }
-        await launchBot(pairingSessionDir).catch(error => log.error(error, 'Could not start bot after pairing'));
+        await launchBot(sessionDir).catch(error => log.error(error, 'Could not start bot after pairing'));
       }, 1200);
     }
     if (update.connection === 'close' && pairStatus !== 'linked') {
@@ -214,7 +215,7 @@ async function startPairing(phone) {
       const status = update.lastDisconnect?.error?.output?.statusCode;
       pairError = status === DisconnectReason.loggedOut ? 'WhatsApp rejected the session. Remove old linked devices and try again.' : 'WhatsApp connection closed. Start a fresh pairing attempt.';
       pairStatus = 'error'; pairingCode = ''; pairSocket = null; pairExpiresAt = 0;
-      if (!state.creds.registered) fs.rmSync(pairingSessionDir, { recursive: true, force: true });
+      if (!state.creds.registered) fs.rmSync(sessionDir, { recursive: true, force: true });
     }
   });
 }
