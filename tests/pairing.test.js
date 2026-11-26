@@ -26,6 +26,8 @@ test('pairing dashboard has separate phone and code displays with a code-copy ac
 });
 
 test('pairing page has a responsive Orbit-inspired pairing dashboard and clear six-step guide', () => {
+  assert.match(dashboard, /BRITECH-MD/);
+  assert.doesNotMatch(dashboard, /BRITECH-NB/);
   assert.match(dashboard, /Your mini bot/);
   assert.match(dashboard, /Link your WhatsApp/);
   assert.match(dashboard, /HOW IT WORKS/);
@@ -88,6 +90,8 @@ test('dashboard navigation stays local and never starts a Manus workflow or task
   assert.doesNotMatch(dashboard, /window\.open|formaction|task\.create|manus\.ai|Manus workflow/i);
   assert.match(server, /PAIRING_DASHBOARD_URL/);
   assert.match(server, /pairingUrl: PAIRING_DASHBOARD_URL/);
+  assert.match(server, /url\.pathname === '\/health' \|\| url\.pathname === '\/healthz'/);
+  assert.match(server, /service: 'BRITECH-MD'/);
   assert.match(fs.readFileSync(path.join(root, '.env.example'), 'utf8'), /PAIRING_DASHBOARD_URL=/);
   const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
   const landingPage = fs.readFileSync(path.join(root, 'vercel-site/index.html'), 'utf8');

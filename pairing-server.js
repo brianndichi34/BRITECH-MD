@@ -191,6 +191,9 @@ async function startPairing(phone) {
 }
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://' + (req.headers.host || 'localhost'));
+  if (req.method === 'GET' && (url.pathname === '/health' || url.pathname === '/healthz')) {
+    return json(res, 200, { ok: true, service: 'BRITECH-MD' });
+  }
   if (url.pathname.startsWith('/api/')) {
     if (req.method === 'GET' && url.pathname === '/api/config') {
       return json(res, 200, { protected: isProtected(TOKEN), pairingUrl: PAIRING_DASHBOARD_URL });
