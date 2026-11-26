@@ -45,6 +45,7 @@ let pairWelcomeSent = false;
 let pairExpiresAt = 0;
 let botProcess = null;
 let startLock = false;
+let pairAttemptTimer = null;
 
 function json(res, status, data) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
@@ -100,8 +101,19 @@ function rotateRegisteredSession() {
   secureSessionDirectory(backupDir);
   return backupDir;
 }
+async function cancelActivePairAttempt() {
+  const current = pairSocket;
+  if (!current) return;
+  pairSocket = null;
+  clearTimeout(pairAttemptTimer);
+  pairAttemptTimer = null;
+  try { await current.end(undefined); } catch {}
+  if (!fs.existsSync(path.join(SESSION_DIR, 'creds.json'))) {
+    fs.rmSync(SESSION_DIR, { recursive: true, force: true });
+  }
+}
 async function startPairing(phone) {
-  if (pairSocket) throw new Error('A pairing attempt is already running. Wait or restart the attempt.');
+  await cancelActivePairAttempt();
   const { default: makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion, Browsers, DisconnectReason } = await loadBaileys();
   const number = normalizePhone(phone);
   if (number.length < 10 || number.length > 15) throw new Error('Enter a valid international number with country code, digits only.');
@@ -137,19 +149,21 @@ async function startPairing(phone) {
   pairSocket = sock;
   let deliveryStarted = false;
   pairExpiresAt = Date.now() + PAIRING_TIMEOUT_MS;
-  const attemptTimer = setTimeout(async () => {
+  pairAttemptTimer = setTimeout(async () => {
     if (pairSocket !== sock || ['linked', 'error'].includes(pairStatus)) return;
     pairStatus = 'error';
     pairingCode = '';
     pairError = 'Pairing timed out. Start a fresh attempt and enter the newest code promptly.';
     log.warn('Pairing attempt expired before WhatsApp confirmed the link.');
     pairSocket = null;
+    pairAttemptTimer = null;
     pairExpiresAt = 0;
     try { await sock.end(undefined); } catch {}
     if (!state.creds.registered) fs.rmSync(SESSION_DIR, { recursive: true, force: true });
   }, PAIRING_TIMEOUT_MS);
   sock.ev.on('creds.update', savePrivateCreds);
   sock.ev.on('connection.update', async update => {
+    if (pairSocket !== sock) return;
     const { connection, qr } = update;
     // requestPairingCode must follow Baileys' initial pair-device handshake.
     // Calling it immediately on `connecting` intermittently produces codes
@@ -172,7 +186,8 @@ async function startPairing(phone) {
       if (!pairingCode && pairSocket === sock) {
         pairError = lastError?.message || 'Could not request a pairing code. Start a fresh attempt.';
         pairStatus = 'error';
-        clearTimeout(attemptTimer);
+        clearTimeout(pairAttemptTimer);
+        pairAttemptTimer = null;
         pairExpiresAt = 0;
         log.error({ message: pairError }, 'Pair-code request failed');
         try { sock.end(undefined); } catch {}
@@ -182,12 +197,14 @@ async function startPairing(phone) {
     if (update.connection === 'open') {
       if (deliveryStarted) return;
       deliveryStarted = true;
-      clearTimeout(attemptTimer);
+      clearTimeout(pairAttemptTimer);
+      pairAttemptTimer = null;
       pairStatus = 'sending_session';
       pairExpiresAt = 0;
       pairingCode = '';
       log.info('WhatsApp pairing confirmed.');
       setTimeout(async () => {
+        if (pairSocket !== sock) return;
         try {
           const recipient = getVerifiedRecipient(number, state.creds.me);
           const sessionId = await createAuthArchiveSessionId(SESSION_DIR);
@@ -215,7 +232,8 @@ async function startPairing(phone) {
       }, 1200);
     }
     if (update.connection === 'close' && pairStatus !== 'linked') {
-      clearTimeout(attemptTimer);
+      clearTimeout(pairAttemptTimer);
+      pairAttemptTimer = null;
       const status = update.lastDisconnect?.error?.output?.statusCode;
       pairError = status === DisconnectReason.loggedOut ? 'WhatsApp rejected the session. Remove old linked devices and try again.' : 'WhatsApp connection closed. Start a fresh pairing attempt.';
       pairStatus = 'error'; pairingCode = ''; pairSocket = null; pairExpiresAt = 0;

@@ -61,7 +61,7 @@ The automated test suite checks the pairing display/copy controls, BRITECH sessi
 
 ### Recommended: deployed pairing dashboard
 
-Deploy the long-running app, then open the direct [BRITECH-MD pairing dashboard](https://silva-orbit-zeno-776-e7a8c83126bd.herokuapp.com/#pair-code). It opens on the **Pair Code** tab; use **Generate Session ID** after linking. To pair another number later, submit a new pairing attempt; the server stops the bot and moves the previous auth folder to a private timestamped backup before creating the fresh session. These are local dashboard controls that call the app's protected API; they do not open GitHub Actions, create a workflow, or create a Manus task. Set `PAIRING_DASHBOARD_TOKEN` on private deployments, or intentionally leave it empty for public mode.
+Deploy the long-running app, then open the direct [BRITECH-MD pairing dashboard](https://silva-orbit-zeno-776-e7a8c83126bd.herokuapp.com/#pair-code). It opens on the **Pair Code** tab; use **Generate Session ID** after linking. To pair the same number again or switch to another number, submit a new pairing attempt; the server cancels any active attempt, stops the bot when necessary, and moves the previous auth folder to a private timestamped backup before creating the fresh session. These are local dashboard controls that call the app's protected API; they do not open GitHub Actions, create a workflow, or create a Manus task. Set `PAIRING_DASHBOARD_TOKEN` on private deployments, or intentionally leave it empty for public mode.
 
 ### Optional fallback: GitHub Actions (private repository)
 

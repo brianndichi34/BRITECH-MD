@@ -311,6 +311,8 @@ test('pairing-code retries discard partial auth state before a fresh attempt', (
 });
 
 test('web pairing allows another number by rotating the prior registered session privately', () => {
+  assert.match(server, /cancelActivePairAttempt/);
+  assert.match(server, /await current\.end\(undefined\)/);
   assert.match(server, /stopBotForRePair/);
   assert.match(server, /rotateRegisteredSession/);
   assert.match(server, /\.backup-\$\{Date\.now\(\)\}/);
