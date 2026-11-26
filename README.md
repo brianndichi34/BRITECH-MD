@@ -28,6 +28,8 @@
 
 **Important:** WhatsApp requires a long-running process and durable authentication storage. Do not deploy `index.js` as a Vercel Function or a serverless function. Vercel is suitable only for a separate static information page.
 
+For hosts that require an HTTP listener, BRITECH MD binds the platform-provided `PORT` and serves `GET /healthz` (also available at `/health` and `/`). The endpoint is only a deployment health check; WhatsApp traffic still uses the long-running bot process. The included `Procfile` declares both `web: npm start` and `worker: npm start` so platforms can select the process type they support.
+
 ## Keith MD–style pairing experience
 The pairing page is designed to make phone-number pairing easy on mobile: enter the international WhatsApp number, request a code, then view the paired number and pairing code in separate display areas. Use **Copy Pair Code** to copy only the one-time code, paste it into WhatsApp → Linked devices → Link with phone number instead, and approve the request. Never share the one-time code.
 

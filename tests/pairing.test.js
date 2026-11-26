@@ -50,6 +50,8 @@ test('session sender verifies the target number through the full paired identity
   assert.match(server, /documentSent: pairDocumentSent/);
   assert.match(server, /sendConnectionWelcome\(sock, config\.welcomeMessage/);
   assert.match(server, /welcomeSent: pairWelcomeSent/);
+  assert.match(fs.readFileSync(path.join(root, 'Procfile'), 'utf8'), /web: npm start/);
+  assert.match(fs.readFileSync(path.join(root, 'lib/health-server.js'), 'utf8'), /\/healthz/);
 });
 
 test('README documents secret handling and copyable SESSION_ID delivery', () => {

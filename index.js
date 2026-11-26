@@ -8,12 +8,14 @@ const { createAntiDelete } = require('./lib/anti-delete');
 const { sendConnectionWelcome } = require('./lib/connection-welcome');
 const { createBadMacRecovery, isBadMacError } = require('./lib/session-recovery');
 const { loadBaileys } = require('./lib/baileys');
+const { startHealthServer } = require('./lib/health-server');
 
 let stopping = false;
 let reconnectTimer;
 let reconnectAttempt = 0;
 let startInFlight = false;
 let activeSocket = null;
+let healthServer = null;
 let profileInitialized = false;
 let logger;
 const sessionRecovery = createBadMacRecovery({
@@ -37,6 +39,7 @@ logger = pino({
     }
   }
 });
+healthServer = startHealthServer({ port: process.env.PORT, logger });
 const antiDelete = createAntiDelete();
 
 async function initializeBotProfile(sock) {
@@ -152,6 +155,7 @@ async function shutdown() {
   stopping = true;
   clearTimeout(reconnectTimer);
   try { await activeSocket?.end?.(undefined); } catch {}
+  try { await new Promise(resolve => healthServer ? healthServer.close(resolve) : resolve()); } catch {}
   logger.info('Stopping BRITECH MD...');
   setTimeout(() => process.exit(0), 1500).unref();
 }
