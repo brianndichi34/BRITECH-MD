@@ -173,7 +173,7 @@ test('handler exposes plugin commands in menu/help while preserving existing dep
   await handleMessage(sock, { key: { remoteJid: '254700000002@s.whatsapp.net', fromMe: false }, message: { conversation: '.help revoke' } });
   assert.match(sent[4].payload.text, /Renew the group invite link/);
   const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-  assert.equal(packageJson.scripts.start, 'node index.js');
+  assert.equal(packageJson.scripts.start, 'node pairing-server.js');
   assert.ok(packageJson.dependencies.sharp && packageJson.dependencies.qrcode);
   assert.match(fs.readFileSync(path.join(root, 'Dockerfile'), 'utf8'), /CMD \["npm", "start"\]/);
   const template = fs.readFileSync(path.join(root, '.env.example'), 'utf8');

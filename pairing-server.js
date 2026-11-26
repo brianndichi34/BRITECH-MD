@@ -7,6 +7,7 @@ const pino = require('pino');
 const config = require('./lib/config');
 const { createAuthArchiveSessionId, getVerifiedRecipient, deliverSession, normalizePhone } = require('./lib/pairing-session');
 const { loadBaileys } = require('./lib/baileys');
+const { hydrateSessionId } = require('./lib/session-id');
 const { sendConnectionWelcome } = require('./lib/connection-welcome');
 const { isProtected, isAuthorized } = require('./lib/dashboard-access');
 
@@ -220,6 +221,12 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, HOST, async () => {
   log.info({ port: PORT }, 'BRITECH MD pairing dashboard is online.');
   const creds = path.join(SESSION_DIR, 'creds.json');
+  try {
+    const imported = await hydrateSessionId(process.env.SESSION_ID, SESSION_DIR);
+    if (imported.loaded) log.info({ files: imported.files, format: imported.format }, 'Loaded SESSION_ID into auth folder.');
+  } catch (error) {
+    log.error({ message: error.message }, 'Failed to hydrate SESSION_ID; fix it or remove it.');
+  }
   if (fs.existsSync(creds)) {
     try {
       if (JSON.parse(fs.readFileSync(creds, 'utf8')).registered) await launchBot();

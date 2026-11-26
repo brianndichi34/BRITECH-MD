@@ -93,6 +93,12 @@ After a successful link, the generator writes a complete, compact `BRITECH3:` va
 
 **Existing session safety:** the generator refuses to overwrite a non-empty auth folder by default. Back up existing credentials before intentionally replacing them; never share them.
 
+## Silva Host deployment and Get Session ID
+
+Silva Host starts `npm start`, which now launches the pairing dashboard at the deployed app URL. The app can be deployed with `SESSION_ID` blank; open the deployed URL and use **Pair Code** or **Generate Session ID** to link WhatsApp and receive the complete session ID privately. If `SESSION_ID` is already configured, the dashboard imports it safely and starts the bot after the existing session is found. Set `PAIRING_DASHBOARD_TOKEN` in Silva Host for private access.
+
+The Silva Host public share card is controlled by Silva Host itself and may continue to show only its platform-level **Deploy** button. The repository cannot add a button to Silva Host’s website UI. After deployment, the app’s own dashboard is the **Get Session ID / Pair Code** entry point.
+
 ## KataBump deployment
 
 1. Download a fresh project ZIP from [GitHub Code → Download ZIP](https://github.com/brianndichi34/BRITECH-MD/archive/refs/heads/main.zip). Sign in at KataBump and create a Node.js server.
