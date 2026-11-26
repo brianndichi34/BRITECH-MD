@@ -161,6 +161,16 @@ test('web pairing exports full auth data as a shorter BRITECH3 ID and the bot im
   }
 });
 
+test('truncated BRITECH3 values produce an actionable deployment error', () => {
+  const valid = sessionIdLoader.createCompactSessionId([
+    { path: 'creds.json', data: JSON.stringify({ registered: true, me: { id: '254712345678@s.whatsapp.net' } }) }
+  ]);
+  assert.throws(
+    () => sessionIdLoader.decodeCompactSessionId(valid.slice(0, -4)),
+    /BRITECH3 payload is truncated or corrupted.*complete one-line value/i
+  );
+});
+
 test('Word document contains the complete SESSION_ID and delivery sends at most two messages', async () => {
   const sessionId = 'BRITECH2:abc+/=XYZ';
   const document = await pairingSession.createSessionDocx(sessionId);
