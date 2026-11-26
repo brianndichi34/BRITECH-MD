@@ -10,6 +10,7 @@ const { loadBaileys } = require('./lib/baileys');
 const { hydrateSessionId } = require('./lib/session-id');
 const { sendConnectionWelcome } = require('./lib/connection-welcome');
 const { isProtected, isAuthorized } = require('./lib/dashboard-access');
+const { secureSessionDirectory } = require('./lib/session-permissions');
 
 const PORT = Number(process.env.PORT || process.env.PAIRING_PORT || 3000);
 const HOST = '0.0.0.0';
@@ -76,7 +77,7 @@ async function startPairing(phone) {
   const number = normalizePhone(phone);
   if (number.length < 10 || number.length > 15) throw new Error('Enter a valid international number with country code, digits only.');
   const credsPath = path.join(SESSION_DIR, 'creds.json');
-  fs.mkdirSync(SESSION_DIR, { recursive: true });
+  secureSessionDirectory(SESSION_DIR);
   if (fs.existsSync(credsPath)) {
     let existing;
     try { existing = JSON.parse(fs.readFileSync(credsPath, 'utf8')); } catch {}
@@ -84,10 +85,14 @@ async function startPairing(phone) {
     // A rejected/expired attempt can leave an unregistered creds.json and stale
     // pre-keys behind. They must not be reused for the next phone-number link.
     fs.rmSync(SESSION_DIR, { recursive: true, force: true });
-    fs.mkdirSync(SESSION_DIR, { recursive: true });
+    secureSessionDirectory(SESSION_DIR);
   }
   pairStatus = 'connecting'; pairingCode = ''; pairingPhone = number; pairError = ''; pairTextSent = false; pairDocumentSent = false; pairSessionSent = false; pairWelcomeSent = false;
   const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
+  const savePrivateCreds = async () => {
+    await saveCreds();
+    secureSessionDirectory(SESSION_DIR);
+  };
   let version;
   try { ({ version } = await fetchLatestBaileysVersion()); } catch {}
   const sock = makeWASocket({
@@ -109,7 +114,7 @@ async function startPairing(phone) {
     try { await sock.end(undefined); } catch {}
     if (!state.creds.registered) fs.rmSync(SESSION_DIR, { recursive: true, force: true });
   }, PAIRING_TIMEOUT_MS);
-  sock.ev.on('creds.update', saveCreds);
+  sock.ev.on('creds.update', savePrivateCreds);
   sock.ev.on('connection.update', async update => {
     const { connection, qr } = update;
     // requestPairingCode must follow Baileys' initial pair-device handshake.
@@ -224,6 +229,7 @@ server.listen(PORT, HOST, async () => {
   try {
     const imported = await hydrateSessionId(process.env.SESSION_ID, SESSION_DIR);
     if (imported.loaded) log.info({ files: imported.files, format: imported.format }, 'Loaded SESSION_ID into auth folder.');
+    secureSessionDirectory(SESSION_DIR);
   } catch (error) {
     // A stale or truncated host SESSION_ID must not take down the pairing dashboard.
     // Operators can pair a fresh account from the dashboard after clearing the bad value.

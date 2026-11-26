@@ -95,7 +95,7 @@ After a successful link, the generator writes a complete, compact `BRITECH3:` va
 
 ## Silva Host deployment and Get Session ID
 
-Silva Host starts `npm start`, which now launches the pairing dashboard at the deployed app URL. The app can be deployed with `SESSION_ID` blank; open the deployed URL and use **Pair Code** or **Generate Session ID** to link WhatsApp and receive the complete session ID privately. If `SESSION_ID` is already configured, the dashboard imports it safely and starts the bot after the existing session is found. Set `PAIRING_DASHBOARD_TOKEN` in Silva Host for private access.
+Silva Host starts `npm start`, which now launches the pairing dashboard at the deployed app URL. The app can be deployed with `SESSION_ID` blank; open the deployed URL and use **Pair Code** or **Generate Session ID** to link WhatsApp and receive the complete session ID privately. If `SESSION_ID` is already configured, the dashboard imports it safely and starts the bot after the existing session is found. Set `PAIRING_DASHBOARD_TOKEN` in Silva Host for private access. Keep `SESSION_DIR=/app/session/auth` on persistent storage; the bot creates the directory and enforces mode `0700` for directories and `0600` for auth files after imports and credential updates. If the host reports a truncated SESSION_ID, clear that variable before starting a fresh pairing.
 
 The Silva Host public share card is controlled by Silva Host itself and may continue to show only its platform-level **Deploy** button. The repository cannot add a button to Silva Host’s website UI. After deployment, the app’s own dashboard is the **Get Session ID / Pair Code** entry point.
 

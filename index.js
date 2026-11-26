@@ -10,6 +10,7 @@ const { createBadMacRecovery, isBadMacError } = require('./lib/session-recovery'
 const { loadBaileys } = require('./lib/baileys');
 const { startHealthServer } = require('./lib/health-server');
 const { getBotAvatarPath } = require('./lib/brand-assets');
+const { secureSessionDirectory } = require('./lib/session-permissions');
 
 let stopping = false;
 let reconnectTimer;
@@ -85,9 +86,14 @@ async function startBot() {
   startInFlight = true;
   try {
     const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = await loadBaileys();
-    fs.mkdirSync(path.resolve(config.sessionDir), { recursive: true, mode: 0o700 });
+    secureSessionDirectory(config.sessionDir);
     await hydrateSessionFromEnv();
+    secureSessionDirectory(config.sessionDir);
     const { state, saveCreds } = await useMultiFileAuthState(path.resolve(config.sessionDir));
+    const savePrivateCreds = async () => {
+      await saveCreds();
+      secureSessionDirectory(config.sessionDir);
+    };
     let version;
     try { ({ version } = await fetchLatestBaileysVersion()); }
     catch { logger.warn('Could not fetch latest WhatsApp Web version; using library default.'); }
@@ -103,7 +109,7 @@ async function startBot() {
       defaultQueryTimeoutMs: 60000
     });
     activeSocket = sock;
-    sock.ev.on('creds.update', saveCreds);
+    sock.ev.on('creds.update', savePrivateCreds);
     sock.ev.on('connection.update', async update => {
       const { connection, lastDisconnect } = update;
       if (config.autoSessionRecovery && isBadMacError(lastDisconnect?.error)) {
