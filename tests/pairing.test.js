@@ -101,6 +101,8 @@ test('dashboard navigation stays local and never starts a Manus workflow or task
   assert.match(landingPage, /https:\/\/silva-orbit-zeno-776-e7a8c83126bd\.herokuapp\.com\/#pair-code/);
   assert.match(readme, /Recommended: deployed pairing dashboard/);
   assert.match(landingPage, /Open Pairing Dashboard/);
+  assert.match(readme, /\[Silva Host\]\(https:\/\/host\.silvatech\.co\.ke\/apps\/deploy\/britech-md\)/);
+  assert.match(landingPage, /href="https:\/\/host\.silvatech\.co\.ke\/apps\/deploy\/britech-md"[^>]*>Deploy on Silva Host/);
 });
 
 test('session sender verifies the target number through the full paired identity', () => {
