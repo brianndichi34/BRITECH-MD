@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/brianndichi34/BRITECH-MD/fork"><img alt="Fork" src="https://img.shields.io/badge/FORK-BRITECH%20MD-8250df?style=for-the-badge"></a>
-  <a href="https://github.com/brianndichi34/BRITECH-MD/actions/workflows/session.yml"><img alt="Generate session" src="https://img.shields.io/badge/GENERATE-SESSION%20ID-238636?style=for-the-badge"></a>
+  <a href="#silva-host-deployment-and-get-session-id"><img alt="Pairing dashboard" src="https://img.shields.io/badge/PAIRING-DASHBOARD-238636?style=for-the-badge"></a>
   <a href="https://github.com/brianndichi34/BRITECH-MD/archive/refs/heads/main.zip"><img alt="Download ZIP" src="https://img.shields.io/badge/DOWNLOAD-ZIP-0969da?style=for-the-badge"></a>
   <a href="https://github.com/brianndichi34/BRITECH-MD/actions/workflows/ci.yml"><img alt="Tests" src="https://img.shields.io/badge/TESTS-GITHUB%20ACTIONS-1f6feb?style=for-the-badge"></a>
 </p>
@@ -59,11 +59,15 @@ The automated test suite checks the pairing display/copy controls, BRITECH sessi
 
 ## Generate a WhatsApp session ID
 
-### Recommended: GitHub Actions (private repository)
+### Recommended: deployed pairing dashboard
+
+Deploy the long-running app, open its assigned app URL, and use the **Pair Code** tab followed by **Generate Session ID**. These are local dashboard controls that call the app's protected API; they do not open GitHub Actions, create a workflow, or create a Manus task. On Silva Host, follow [Silva Host deployment and Get Session ID](#silva-host-deployment-and-get-session-id). Set `PAIRING_DASHBOARD_TOKEN` on private deployments, or intentionally leave it empty for public mode.
+
+### Optional fallback: GitHub Actions (private repository)
 
 1. Open the repository **Settings → Secrets and variables → Actions**.
 2. Add a repository secret named `SESSION_ARCHIVE_PASSWORD`. Use a long, unique password and keep it private.
-3. Open the **Actions** tab → **BRITECH-MD — Generate WhatsApp Session** → **Run workflow**.
+3. Use this only as a fallback when a long-running pairing dashboard cannot be deployed: open the repository **Actions** tab → **BRITECH-MD — Generate WhatsApp Session** → **Run workflow**. The normal **Generate Session ID** dashboard action does not route here.
 4. Enter your WhatsApp number with country code and digits only, e.g. `2547XXXXXXXX`.
 5. Start the workflow. Open its run log and use the displayed one-time pairing code in WhatsApp → Linked devices → Link with phone number instead.
 6. Approve the pairing and wait for the workflow to finish. The workflow sends at most one complete `SESSION_ID` Word document and one complete plain-text message to the entered number’s WhatsApp DM; it never sends chunked copies.

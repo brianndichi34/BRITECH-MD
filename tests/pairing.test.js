@@ -89,6 +89,12 @@ test('dashboard navigation stays local and never starts a Manus workflow or task
   assert.match(server, /PAIRING_DASHBOARD_URL/);
   assert.match(server, /pairingUrl: PAIRING_DASHBOARD_URL/);
   assert.match(fs.readFileSync(path.join(root, '.env.example'), 'utf8'), /PAIRING_DASHBOARD_URL=/);
+  const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
+  const landingPage = fs.readFileSync(path.join(root, 'vercel-site/index.html'), 'utf8');
+  assert.doesNotMatch(readme, /href="https:\/\/github\.com\/brianndichi34\/BRITECH-MD\/actions\/workflows\/session\.yml"/);
+  assert.doesNotMatch(landingPage, /href="https:\/\/github\.com\/brianndichi34\/BRITECH-MD\/actions\/workflows\/session\.yml"/);
+  assert.match(readme, /Recommended: deployed pairing dashboard/);
+  assert.match(landingPage, /Pairing Dashboard Setup/);
 });
 
 test('session sender verifies the target number through the full paired identity', () => {
