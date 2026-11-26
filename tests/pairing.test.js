@@ -310,6 +310,14 @@ test('pairing-code retries discard partial auth state before a fresh attempt', (
   assert.match(generator, /fs\.rmSync\(sessionDir, \{ recursive: true, force: true \}\)/);
 });
 
+test('web pairing allows another number by rotating the prior registered session privately', () => {
+  assert.match(server, /stopBotForRePair/);
+  assert.match(server, /rotateRegisteredSession/);
+  assert.match(server, /\.backup-\$\{Date\.now\(\)\}/);
+  assert.match(server, /Rotated the previous WhatsApp session for a new pairing attempt/);
+  assert.doesNotMatch(server, /This service already has a registered WhatsApp session/);
+});
+
 test('pairing-code requests wait for Baileys initial QR handshake', () => {
   const generator = fs.readFileSync(path.join(root, 'generate-session.js'), 'utf8');
   assert.match(generator, /const \{ connection, qr, lastDisconnect \} = update/);

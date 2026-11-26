@@ -71,6 +71,35 @@ async function launchBot() {
     log.info('BRITECH-MD bot process started after pairing.');
   } finally { startLock = false; }
 }
+async function stopBotForRePair() {
+  const current = botProcess;
+  if (!current) return;
+  await new Promise(resolve => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+    current.once('exit', finish);
+    try { current.kill('SIGTERM'); } catch { finish(); }
+    setTimeout(() => {
+      if (settled) return;
+      try { current.kill('SIGKILL'); } catch {}
+      finish();
+    }, 5000).unref();
+  });
+  if (botProcess === current) botProcess = null;
+}
+function rotateRegisteredSession() {
+  if (!fs.existsSync(SESSION_DIR)) return '';
+  const stat = fs.lstatSync(SESSION_DIR);
+  if (stat.isSymbolicLink()) throw new Error('The session directory must not be a symbolic link.');
+  const backupDir = `${SESSION_DIR}.backup-${Date.now()}`;
+  fs.renameSync(SESSION_DIR, backupDir);
+  secureSessionDirectory(backupDir);
+  return backupDir;
+}
 async function startPairing(phone) {
   if (pairSocket) throw new Error('A pairing attempt is already running. Wait or restart the attempt.');
   const { default: makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion, Browsers, DisconnectReason } = await loadBaileys();
@@ -81,10 +110,15 @@ async function startPairing(phone) {
   if (fs.existsSync(credsPath)) {
     let existing;
     try { existing = JSON.parse(fs.readFileSync(credsPath, 'utf8')); } catch {}
-    if (existing?.registered) throw new Error('This service already has a registered WhatsApp session. Do not overwrite it. Remove the old linked device and clear the session folder only if you intentionally want to pair again.');
-    // A rejected/expired attempt can leave an unregistered creds.json and stale
-    // pre-keys behind. They must not be reused for the next phone-number link.
-    fs.rmSync(SESSION_DIR, { recursive: true, force: true });
+    if (existing?.registered) {
+      await stopBotForRePair();
+      const backupDir = rotateRegisteredSession();
+      log.info({ backup: path.basename(backupDir) }, 'Rotated the previous WhatsApp session for a new pairing attempt.');
+    } else {
+      // A rejected/expired attempt can leave an unregistered creds.json and stale
+      // pre-keys behind. They must not be reused for the next phone-number link.
+      fs.rmSync(SESSION_DIR, { recursive: true, force: true });
+    }
     secureSessionDirectory(SESSION_DIR);
   }
   pairStatus = 'connecting'; pairingCode = ''; pairingPhone = number; pairError = ''; pairTextSent = false; pairDocumentSent = false; pairSessionSent = false; pairWelcomeSent = false;
