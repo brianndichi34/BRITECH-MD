@@ -15,6 +15,7 @@ const sender = fs.readFileSync(path.join(root, 'send-session.js'), 'utf8');
 const workflow = fs.readFileSync(path.join(root, '.github/workflows/session.yml'), 'utf8');
 const pairingSession = require(path.join(root, 'lib/pairing-session'));
 const sessionIdLoader = require(path.join(root, 'lib/session-id'));
+const dashboardAccess = require(path.join(root, 'lib/dashboard-access'));
 
 test('pairing dashboard has separate phone and code displays with a code-copy action', () => {
   assert.match(dashboard, /id="pairedPhone"/);
@@ -37,13 +38,13 @@ test('pairing page has a responsive Orbit-inspired pairing dashboard and clear s
   assert.match(dashboard, /fetch\(path/);
   assert.match(dashboard, /api\('\/api\/pair\/start'/);
   assert.match(dashboard, /api\('\/api\/pair\/status'/);
-  assert.match(dashboard, /Authorization': `Bearer \$\{token\(\)\}`/);
+  assert.match(dashboard, /headers\.Authorization = `Bearer \$\{token\(\)\}`/);
   assert.match(dashboard, /Remember token on this device/);
   assert.match(dashboard, /Forget\/Clear token/);
   assert.match(dashboard, /localStorage\.getItem\(TOKEN_STORAGE_KEY\)/);
   assert.match(dashboard, /localStorage\.setItem\(TOKEN_STORAGE_KEY, token\(\)\)/);
   assert.match(dashboard, /localStorage\.removeItem\(TOKEN_STORAGE_KEY\)/);
-  assert.match(dashboard, /Authorization': `Bearer \$\{token\(\)\}`/);
+  assert.match(dashboard, /headers\.Authorization = `Bearer \$\{token\(\)\}`/);
   assert.match(dashboard, /\.menu/);
 });
 
@@ -61,6 +62,22 @@ test('dashboard tabs activate the correct protected flow without a second token 
   assert.doesNotMatch(sessionRoute, /code: pairingCode/);
 });
 
+test('dashboard supports explicit public and protected access modes', () => {
+  assert.equal(dashboardAccess.isProtected(''), false);
+  assert.equal(dashboardAccess.isProtected('   '), false);
+  assert.equal(dashboardAccess.isAuthorized('', undefined), true);
+  assert.equal(dashboardAccess.isAuthorized('', 'Bearer anything'), true);
+  assert.equal(dashboardAccess.isProtected('private-token'), true);
+  assert.equal(dashboardAccess.isAuthorized('private-token', undefined), false);
+  assert.equal(dashboardAccess.isAuthorized('private-token', 'Bearer wrong-token'), false);
+  assert.equal(dashboardAccess.isAuthorized('private-token', 'Bearer private-token'), true);
+  assert.match(server, /url\.pathname === '\/api\/config'/);
+  assert.match(server, /protected: isProtected\(TOKEN\)/);
+  assert.match(dashboard, /document\.body\.classList\.toggle\('access-public', !protectedMode\)/);
+  assert.match(dashboard, /\.access-public \.token-field/);
+  assert.match(dashboard, /if \(protectedMode && token\(\)\) headers\.Authorization/);
+});
+
 test('session sender verifies the target number through the full paired identity', () => {
   assert.match(sender, /getVerifiedRecipient\(phone, state\.creds\.me\)/);
   assert.doesNotMatch(sender, /phone \+ '@s\.whatsapp\.net'/);
@@ -75,10 +92,16 @@ test('session sender verifies the target number through the full paired identity
 
 test('README documents secret handling and copyable SESSION_ID delivery', () => {
   const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
+  const envExample = fs.readFileSync(path.join(root, '.env.example'), 'utf8');
   assert.match(readme, /at most two.*Word document.*plain-text message/i);
   assert.match(readme, /Word document/i);
   assert.match(readme, /Open the Word file or copy the plain-text value/i);
   assert.match(readme, /Keep the pairing code and run access private/);
+  assert.match(readme, /explicit \*\*public mode\*\*/i);
+  assert.match(readme, /anyone who can reach the deployed dashboard can pair/i);
+  assert.match(readme, /set a long random token/i);
+  assert.match(envExample, /Leave empty for explicit public mode/);
+  assert.match(envExample, /^PAIRING_DASHBOARD_TOKEN=\s*$/m);
 });
 
 test('dashboard creates a legacy BRITECH credentials SESSION_ID', () => {

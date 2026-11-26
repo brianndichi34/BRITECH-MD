@@ -8,10 +8,11 @@ const config = require('./lib/config');
 const { createAuthArchiveSessionId, getVerifiedRecipient, deliverSession, normalizePhone } = require('./lib/pairing-session');
 const { loadBaileys } = require('./lib/baileys');
 const { sendConnectionWelcome } = require('./lib/connection-welcome');
+const { isProtected, isAuthorized } = require('./lib/dashboard-access');
 
 const PORT = Number(process.env.PORT || process.env.PAIRING_PORT || 3000);
 const HOST = '0.0.0.0';
-const TOKEN = process.env.PAIRING_DASHBOARD_TOKEN || '';
+const TOKEN = String(process.env.PAIRING_DASHBOARD_TOKEN || '').trim();
 const SESSION_DIR = path.resolve(process.env.SESSION_DIR || './session/auth');
 const PUBLIC_DIR = path.join(__dirname, 'pairing-web');
 const configuredPairingTimeout = Number(process.env.PAIRING_TIMEOUT_MS);
@@ -31,18 +32,12 @@ let pairExpiresAt = 0;
 let botProcess = null;
 let startLock = false;
 
-function safeEqual(a, b) {
-  const crypto = require('crypto');
-  const aa = Buffer.from(String(a || ''));
-  const bb = Buffer.from(String(b || ''));
-  return aa.length === bb.length && crypto.timingSafeEqual(aa, bb);
-}
 function json(res, status, data) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
   res.end(JSON.stringify(data));
 }
 function authorized(req) {
-  return TOKEN && safeEqual(req.headers.authorization?.replace(/^Bearer\s+/i, ''), TOKEN);
+  return isAuthorized(TOKEN, req.headers.authorization);
 }
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -179,6 +174,9 @@ async function startPairing(phone) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://' + (req.headers.host || 'localhost'));
   if (url.pathname.startsWith('/api/')) {
+    if (req.method === 'GET' && url.pathname === '/api/config') {
+      return json(res, 200, { protected: isProtected(TOKEN) });
+    }
     if (!authorized(req)) return json(res, 401, { error: 'Unauthorized. Enter the private pairing dashboard token.' });
     if (req.method === 'POST' && url.pathname === '/api/pair/start') {
       try { const body = await readBody(req); await startPairing(body.phone); return json(res, 200, { status: pairStatus }); }

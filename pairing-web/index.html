@@ -83,6 +83,7 @@
     .session-flow .session-state[data-state="error"] { border-color: #f1dddd; color: #a04d58; background: #fff8f8; }
     .session-flow ol { display: grid; gap: 9px; margin: 0; padding-left: 20px; color: var(--muted); font-size: .77rem; line-height: 1.5; }
     .token-field { margin-bottom: 13px; }
+    .access-public .token-field { display: none; }
     .token-preferences { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
     .remember-token { display: inline-flex; align-items: center; gap: 7px; margin: 0; color: var(--muted); font-size: .71rem; font-weight: 750; cursor: pointer; }
     .remember-token input { width: 16px; height: 16px; margin: 0; accent-color: var(--violet); }
@@ -182,7 +183,7 @@
       </a>
       <nav class="top-actions" aria-label="Page navigation">
         <a class="top-link" href="#how-it-works">How it works</a>
-        <span class="secure-badge"><span class="secure-dot" aria-hidden="true"></span> PRIVATE PAIRING</span>
+        <span id="accessBadge" class="secure-badge"><span class="secure-dot" aria-hidden="true"></span> PRIVATE PAIRING</span>
       </nav>
     </header>
 
@@ -201,7 +202,7 @@
       <section class="pair-card" aria-labelledby="connect-title">
         <div class="card-kicker"><span class="card-step">01 / DEVICE PAIRING</span><span class="ready-chip">Service ready</span></div>
         <h2 id="connect-title">Link your WhatsApp</h2>
-        <p class="card-intro">Enter the full number with country code. Your private access token is used only to authorize requests to this pairing service.</p>
+        <p id="accessIntro" class="card-intro">Enter the full number with country code. Your private access token is used only to authorize requests to this pairing service.</p>
 
         <div class="flow-tabs" role="tablist" aria-label="Pairing actions">
           <button id="pairCodeTab" class="flow-tab" type="button" role="tab" aria-selected="true" aria-controls="pairCodePanel">Pair Code</button>
@@ -210,7 +211,7 @@
 
         <section id="pairCodePanel" class="flow-panel" role="tabpanel" aria-labelledby="pairCodeTab">
         <form id="pairingForm" novalidate>
-          <div class="token-field">
+          <div id="tokenField" class="token-field">
             <label for="token">Private dashboard token</label>
             <div class="input-wrap"><input id="token" type="password" autocomplete="off" placeholder="Enter your pairing dashboard token" aria-describedby="token-hint"></div>
             <p class="hint" id="token-hint">Keep this token private. It is stored only in this browser when remembered.</p>
@@ -289,7 +290,10 @@
     let lastCode = '';
     const TOKEN_STORAGE_KEY = 'britech.dashboardToken';
     const REMEMBER_STORAGE_KEY = 'britech.rememberDashboardToken';
+    let protectedMode = true;
+    let accessReady = false;
     function token() { return $('token').value.trim(); }
+    function needsToken() { return protectedMode && !token(); }
     function persistTokenPreference() {
       try {
         if ($('rememberToken').checked && token()) localStorage.setItem(TOKEN_STORAGE_KEY, token());
@@ -331,7 +335,12 @@
     }
     async function activateSessionFlow() {
       stopSessionPolling();
-      if (!token()) {
+      if (!accessReady) {
+        $('sessionState').dataset.state = 'idle';
+        $('sessionState').textContent = 'Checking dashboard access mode…';
+        return;
+      }
+      if (needsToken()) {
         $('sessionState').dataset.state = 'error';
         $('sessionState').textContent = 'Enter the private dashboard access token above to activate the protected SESSION_ID flow.';
         $('token').focus();
@@ -386,9 +395,11 @@
       countdown = setInterval(render, 1000);
     }
     async function api(path, options = {}) {
+      const headers = { 'Content-Type': 'application/json' };
+      if (protectedMode && token()) headers.Authorization = `Bearer ${token()}`;
       const response = await fetch(path, {
         ...options,
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}`, ...(options.headers || {}) }
+        headers: { ...headers, ...(options.headers || {}) }
       });
       let data;
       try { data = await response.json(); } catch { throw new Error('The pairing service returned an unreadable response. Try again.'); }
@@ -396,12 +407,33 @@
       return data;
     }
 
+    async function configureAccessMode() {
+      try {
+        const response = await fetch('/api/config', { cache: 'no-store' });
+        const data = await response.json();
+        protectedMode = Boolean(data.protected);
+        accessReady = true;
+        document.body.classList.toggle('access-public', !protectedMode);
+        if (!protectedMode) {
+          $('token').value = '';
+          $('accessBadge').lastChild.textContent = ' PUBLIC PAIRING';
+          $('accessIntro').textContent = 'Enter the full number with country code. This dashboard is public, so anyone who can reach it can start a pairing flow.';
+          stopSessionPolling();
+        }
+        if (!$('sessionIdPanel').hidden) activateSessionFlow();
+      } catch {
+        accessReady = false;
+        setStatus('Could not determine dashboard access mode. Try refreshing the page.', 'error');
+      }
+    }
+
     $('pairingForm').addEventListener('submit', async event => {
       event.preventDefault();
       stopPolling();
       const phone = $('phone').value.replace(/\D/g, '');
       $('phone').value = phone;
-      if (!token()) { setStatus('Enter the private dashboard access token first.', 'error'); $('token').focus(); return; }
+      if (!accessReady) { setStatus('Checking dashboard access mode…', 'loading'); return; }
+      if (needsToken()) { setStatus('Enter the private dashboard access token first.', 'error'); $('token').focus(); return; }
       persistTokenPreference();
       if (phone.length < 10 || phone.length > 15) { setStatus('Enter 10–15 digits including your country code.', 'error'); $('phone').focus(); return; }
       $('generate').disabled = true;
@@ -486,6 +518,7 @@
         setStatus('Copy was blocked by your browser. Select the code and copy it manually.', 'error');
       }
     });
+    void configureAccessMode();
   </script>
 </body>
 </html>
