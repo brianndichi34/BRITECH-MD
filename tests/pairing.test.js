@@ -38,8 +38,27 @@ test('pairing page has a responsive Orbit-inspired pairing dashboard and clear s
   assert.match(dashboard, /api\('\/api\/pair\/start'/);
   assert.match(dashboard, /api\('\/api\/pair\/status'/);
   assert.match(dashboard, /Authorization': `Bearer \$\{token\(\)\}`/);
-  assert.match(dashboard, /not saved by this page/i);
+  assert.match(dashboard, /Remember token on this device/);
+  assert.match(dashboard, /Forget\/Clear token/);
+  assert.match(dashboard, /localStorage\.getItem\(TOKEN_STORAGE_KEY\)/);
+  assert.match(dashboard, /localStorage\.setItem\(TOKEN_STORAGE_KEY, token\(\)\)/);
+  assert.match(dashboard, /localStorage\.removeItem\(TOKEN_STORAGE_KEY\)/);
+  assert.match(dashboard, /Authorization': `Bearer \$\{token\(\)\}`/);
   assert.match(dashboard, /\.menu/);
+});
+
+test('dashboard tabs activate the correct protected flow without a second token prompt', () => {
+  assert.match(dashboard, /id="pairCodeTab"[^>]*aria-selected="true"/);
+  assert.match(dashboard, /id="sessionIdTab"[^>]*aria-selected="false"/);
+  assert.match(dashboard, /setActiveTab\(tab\)/);
+  assert.match(dashboard, /localStorage\.getItem\(TOKEN_STORAGE_KEY\)/);
+  assert.match(dashboard, /localStorage\.setItem\(TOKEN_STORAGE_KEY, token\(\)\)/);
+  assert.match(dashboard, /sessionIdTab.*setActiveTab\('session'\)/s);
+  assert.match(dashboard, /api\('\/api\/session\/status'/);
+  const sessionRoute = server.match(/url\.pathname === '\/api\/session\/status'[\s\S]*?(?=if \(req\.method === 'GET' && url\.pathname === '\/api\/pair\/status')/)?.[0] || '';
+  assert.match(sessionRoute, /sessionSent: pairSessionSent/);
+  assert.match(sessionRoute, /documentSent: pairDocumentSent/);
+  assert.doesNotMatch(sessionRoute, /code: pairingCode/);
 });
 
 test('session sender verifies the target number through the full paired identity', () => {

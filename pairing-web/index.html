@@ -70,7 +70,25 @@
     .ready-chip::before { width: 6px; height: 6px; border-radius: 50%; background: #35bf9d; content: ""; }
     .pair-card h2 { margin: 0; font-size: 1.36rem; font-weight: 900; letter-spacing: -.035em; }
     .card-intro { margin: 7px 0 17px; color: var(--muted); font-size: .83rem; line-height: 1.55; }
+    .flow-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 18px; padding: 4px; border: 1px solid #e8e9f3; border-radius: 14px; background: #f6f7fc; }
+    .flow-tab { min-height: 42px; padding: 9px 10px; border: 0; border-radius: 10px; color: var(--muted); background: transparent; font-size: .76rem; font-weight: 900; cursor: pointer; }
+    .flow-tab[aria-selected="true"] { color: var(--violet-dark); background: white; box-shadow: 0 4px 12px rgba(48, 56, 105, .09); }
+    .flow-tab:focus-visible { outline: 3px solid #b7a9ff; outline-offset: 2px; }
+    .flow-panel[hidden] { display: none; }
+    .session-flow { display: grid; gap: 13px; }
+    .session-flow h3 { margin: 0; font-size: 1.04rem; }
+    .session-flow p { margin: 0; color: var(--muted); font-size: .8rem; line-height: 1.6; }
+    .session-flow .session-state { padding: 13px 14px; border: 1px solid #e9eaf3; border-radius: 13px; color: #59627b; background: #fafbff; font-size: .77rem; line-height: 1.55; }
+    .session-flow .session-state[data-state="success"] { border-color: #d7f0e7; color: #317562; background: #f3fbf7; }
+    .session-flow .session-state[data-state="error"] { border-color: #f1dddd; color: #a04d58; background: #fff8f8; }
+    .session-flow ol { display: grid; gap: 9px; margin: 0; padding-left: 20px; color: var(--muted); font-size: .77rem; line-height: 1.5; }
     .token-field { margin-bottom: 13px; }
+    .token-preferences { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
+    .remember-token { display: inline-flex; align-items: center; gap: 7px; margin: 0; color: var(--muted); font-size: .71rem; font-weight: 750; cursor: pointer; }
+    .remember-token input { width: 16px; height: 16px; margin: 0; accent-color: var(--violet); }
+    .clear-token { padding: 0; border: 0; color: var(--violet-dark); background: transparent; font-size: .7rem; font-weight: 850; cursor: pointer; }
+    .clear-token:hover { text-decoration: underline; }
+    .clear-token:focus-visible { outline: 3px solid #b7a9ff; outline-offset: 3px; border-radius: 4px; }
     label { display: block; margin: 0 0 7px; color: #3d4762; font-size: .76rem; font-weight: 850; }
     .input-wrap { position: relative; }
     input { display: block; width: 100%; height: 48px; padding: 0 14px; border: 1px solid #e2e5ef; border-radius: 12px; outline: none; color: var(--ink); background: #fbfcff; font-size: .9rem; transition: border-color .16s ease, box-shadow .16s ease, background .16s ease; }
@@ -185,11 +203,21 @@
         <h2 id="connect-title">Link your WhatsApp</h2>
         <p class="card-intro">Enter the full number with country code. Your private access token is used only to authorize requests to this pairing service.</p>
 
+        <div class="flow-tabs" role="tablist" aria-label="Pairing actions">
+          <button id="pairCodeTab" class="flow-tab" type="button" role="tab" aria-selected="true" aria-controls="pairCodePanel">Pair Code</button>
+          <button id="sessionIdTab" class="flow-tab" type="button" role="tab" aria-selected="false" aria-controls="sessionIdPanel">Get Session ID</button>
+        </div>
+
+        <section id="pairCodePanel" class="flow-panel" role="tabpanel" aria-labelledby="pairCodeTab">
         <form id="pairingForm" novalidate>
           <div class="token-field">
             <label for="token">Private dashboard token</label>
             <div class="input-wrap"><input id="token" type="password" autocomplete="off" placeholder="Enter your pairing dashboard token" aria-describedby="token-hint"></div>
-            <p class="hint" id="token-hint">Keep this token private. It is not saved by this page.</p>
+            <p class="hint" id="token-hint">Keep this token private. It is stored only in this browser when remembered.</p>
+            <div class="token-preferences">
+              <label class="remember-token"><input id="rememberToken" type="checkbox" checked> Remember token on this device</label>
+              <button id="clearToken" class="clear-token" type="button">Forget/Clear token</button>
+            </div>
           </div>
           <div>
             <label for="phone">WhatsApp number</label>
@@ -206,6 +234,18 @@
         </div>
         <div id="status" class="status" data-state="idle" role="status" aria-live="polite"><span class="status-mark" aria-hidden="true"></span><span id="statusText">Ready when you are. Your code will appear here.</span></div>
         <p class="token-warning"><span class="lock" aria-hidden="true">◆</span><span>Never share your pairing code. Enter it only in WhatsApp’s <strong>Linked Devices</strong> screen.</span></p>
+        </section>
+
+        <section id="sessionIdPanel" class="flow-panel session-flow" role="tabpanel" aria-labelledby="sessionIdTab" hidden>
+          <h3>Get your complete SESSION_ID</h3>
+          <p>This flow activates automatically after you select this tab. Pair your WhatsApp number first; after WhatsApp confirms the link, BRITECH MD creates the complete <code>BRITECH3:</code> value and delivers it privately to the paired number.</p>
+          <ol>
+            <li>Use <strong>Pair Code</strong> to start or continue the phone-number link.</li>
+            <li>Enter the one-time code in WhatsApp → Linked devices.</li>
+            <li>Keep the Word document and plain-text SESSION_ID message private.</li>
+          </ol>
+          <div id="sessionState" class="session-state" data-state="idle" aria-live="polite">Checking the protected pairing status…</div>
+        </section>
       </section>
     </section>
 
@@ -244,9 +284,23 @@
   <script>
     const $ = id => document.getElementById(id);
     let poller = null;
+    let sessionPoller = null;
     let countdown = null;
     let lastCode = '';
+    const TOKEN_STORAGE_KEY = 'britech.dashboardToken';
+    const REMEMBER_STORAGE_KEY = 'britech.rememberDashboardToken';
     function token() { return $('token').value.trim(); }
+    function persistTokenPreference() {
+      try {
+        if ($('rememberToken').checked && token()) localStorage.setItem(TOKEN_STORAGE_KEY, token());
+        else localStorage.removeItem(TOKEN_STORAGE_KEY);
+        localStorage.setItem(REMEMBER_STORAGE_KEY, String($('rememberToken').checked));
+      } catch {}
+    }
+    try {
+      $('rememberToken').checked = localStorage.getItem(REMEMBER_STORAGE_KEY) !== 'false';
+      if ($('rememberToken').checked) $('token').value = localStorage.getItem(TOKEN_STORAGE_KEY) || '';
+    } catch {}
     function setStatus(message, state = 'idle') {
       $('statusText').textContent = message;
       $('status').dataset.state = state;
@@ -261,6 +315,58 @@
       poller = null;
       countdown = null;
       $('expiry').classList.add('hidden');
+    }
+    function stopSessionPolling() {
+      clearInterval(sessionPoller);
+      sessionPoller = null;
+    }
+    function setActiveTab(tab) {
+      const session = tab === 'session';
+      $('pairCodeTab').setAttribute('aria-selected', String(!session));
+      $('sessionIdTab').setAttribute('aria-selected', String(session));
+      $('pairCodePanel').hidden = session;
+      $('sessionIdPanel').hidden = !session;
+      if (session) activateSessionFlow();
+      else stopSessionPolling();
+    }
+    async function activateSessionFlow() {
+      stopSessionPolling();
+      if (!token()) {
+        $('sessionState').dataset.state = 'error';
+        $('sessionState').textContent = 'Enter the private dashboard access token above to activate the protected SESSION_ID flow.';
+        $('token').focus();
+        return;
+      }
+      await refreshSessionFlow();
+      if (!$('sessionIdPanel').hidden) sessionPoller = setInterval(refreshSessionFlow, 1800);
+    }
+    async function refreshSessionFlow() {
+      try {
+        const data = await api('/api/session/status');
+        const state = $('sessionState');
+        state.dataset.state = data.status === 'linked' ? 'success' : data.status === 'error' ? 'error' : 'idle';
+        if (data.status === 'linked') {
+          const formats = [];
+          if (data.documentSent) formats.push('Word document');
+          if (data.textSent) formats.push('plain-text value');
+          state.textContent = 'SESSION_ID generation is complete. ' + (formats.join(' and ') || 'The complete value') + ' was delivered privately to the paired WhatsApp number.';
+          stopSessionPolling();
+        } else if (data.status === 'sending_session') {
+          state.textContent = 'WhatsApp is linked. Generating the complete BRITECH3 SESSION_ID and delivering it privately…';
+        } else if (data.status === 'code_ready' || data.status === 'connecting') {
+          state.textContent = 'Pairing is active. Complete the WhatsApp link with the one-time code in the Pair Code tab.';
+        } else if (data.status === 'error') {
+          state.textContent = data.error || 'The protected SESSION_ID flow needs a fresh pairing attempt.';
+          stopSessionPolling();
+        } else {
+          state.textContent = 'No active pairing yet. Select Pair Code to start a protected phone-number pairing attempt.';
+          stopSessionPolling();
+        }
+      } catch (error) {
+        $('sessionState').dataset.state = 'error';
+        $('sessionState').textContent = error.message;
+        stopSessionPolling();
+      }
     }
     function showExpiry(expiresAt) {
       clearInterval(countdown);
@@ -296,6 +402,7 @@
       const phone = $('phone').value.replace(/\D/g, '');
       $('phone').value = phone;
       if (!token()) { setStatus('Enter the private dashboard access token first.', 'error'); $('token').focus(); return; }
+      persistTokenPreference();
       if (phone.length < 10 || phone.length > 15) { setStatus('Enter 10–15 digits including your country code.', 'error'); $('phone').focus(); return; }
       $('generate').disabled = true;
       $('generate').querySelector('span').textContent = 'Starting…';
@@ -357,6 +464,17 @@
         $('generate').querySelector('span').textContent = 'Try again';
       }
     }
+
+    $('pairCodeTab').addEventListener('click', () => setActiveTab('pair'));
+    $('sessionIdTab').addEventListener('click', () => setActiveTab('session'));
+    $('token').addEventListener('change', persistTokenPreference);
+    $('rememberToken').addEventListener('change', persistTokenPreference);
+    $('clearToken').addEventListener('click', () => {
+      $('token').value = '';
+      try { localStorage.removeItem(TOKEN_STORAGE_KEY); } catch {}
+      setStatus('Saved dashboard token cleared from this device.', 'idle');
+      $('token').focus();
+    });
 
     $('copy').addEventListener('click', async () => {
       const code = lastCode;

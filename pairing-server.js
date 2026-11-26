@@ -184,6 +184,17 @@ const server = http.createServer(async (req, res) => {
       try { const body = await readBody(req); await startPairing(body.phone); return json(res, 200, { status: pairStatus }); }
       catch (error) { return json(res, 400, { error: error.message || 'Could not start pairing.' }); }
     }
+    if (req.method === 'GET' && url.pathname === '/api/session/status') {
+      return json(res, 200, {
+        status: pairStatus,
+        phone: pairingPhone,
+        sessionSent: pairSessionSent,
+        textSent: pairTextSent,
+        documentSent: pairDocumentSent,
+        welcomeSent: pairWelcomeSent,
+        error: pairError
+      });
+    }
     if (req.method === 'GET' && url.pathname === '/api/pair/status') {
       return json(res, 200, { status: pairStatus, phone: pairingPhone, code: pairingCode, error: pairError, sessionSent: pairSessionSent, textSent: pairTextSent, documentSent: pairDocumentSent, welcomeSent: pairWelcomeSent, expiresAt: pairExpiresAt });
     }
