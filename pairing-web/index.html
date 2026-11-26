@@ -206,7 +206,7 @@
 
         <div class="flow-tabs" role="tablist" aria-label="Pairing actions">
           <button id="pairCodeTab" class="flow-tab" type="button" role="tab" aria-selected="true" aria-controls="pairCodePanel">Pair Code</button>
-          <button id="sessionIdTab" class="flow-tab" type="button" role="tab" aria-selected="false" aria-controls="sessionIdPanel">Get Session ID</button>
+          <button id="sessionIdTab" class="flow-tab" type="button" role="tab" aria-selected="false" aria-controls="sessionIdPanel">Generate Session ID</button>
         </div>
 
         <section id="pairCodePanel" class="flow-panel" role="tabpanel" aria-labelledby="pairCodeTab">
@@ -292,6 +292,7 @@
     const REMEMBER_STORAGE_KEY = 'britech.rememberDashboardToken';
     let protectedMode = true;
     let accessReady = false;
+    let pairingSiteUrl = '';
     function token() { return $('token').value.trim(); }
     function needsToken() { return protectedMode && !token(); }
     function persistTokenPreference() {
@@ -332,6 +333,20 @@
       $('sessionIdPanel').hidden = !session;
       if (session) activateSessionFlow();
       else stopSessionPolling();
+    }
+    function navigateOrActivate(tab) {
+      const hash = tab === 'session' ? '#session-id' : '#pair-code';
+      if (pairingSiteUrl) {
+        try {
+          const target = new URL(pairingSiteUrl, window.location.href);
+          const current = new URL(window.location.href);
+          const samePage = target.origin === current.origin && target.pathname === current.pathname && target.search === current.search;
+          target.hash = hash;
+          if (!samePage) { window.location.assign(target.href); return; }
+        } catch {}
+      }
+      setActiveTab(tab);
+      history.replaceState(null, '', hash);
     }
     async function activateSessionFlow() {
       stopSessionPolling();
@@ -412,6 +427,7 @@
         const response = await fetch('/api/config', { cache: 'no-store' });
         const data = await response.json();
         protectedMode = Boolean(data.protected);
+        pairingSiteUrl = typeof data.pairingUrl === 'string' ? data.pairingUrl : '';
         accessReady = true;
         document.body.classList.toggle('access-public', !protectedMode);
         if (!protectedMode) {
@@ -420,7 +436,9 @@
           $('accessIntro').textContent = 'Enter the full number with country code. This dashboard is public, so anyone who can reach it can start a pairing flow.';
           stopSessionPolling();
         }
-        if (!$('sessionIdPanel').hidden) activateSessionFlow();
+        const requestedTab = window.location.hash === '#session-id' ? 'session' : window.location.hash === '#pair-code' ? 'pair' : '';
+        if (requestedTab) setActiveTab(requestedTab);
+        else if (!$('sessionIdPanel').hidden) activateSessionFlow();
       } catch {
         accessReady = false;
         setStatus('Could not determine dashboard access mode. Try refreshing the page.', 'error');
@@ -497,8 +515,8 @@
       }
     }
 
-    $('pairCodeTab').addEventListener('click', () => setActiveTab('pair'));
-    $('sessionIdTab').addEventListener('click', () => setActiveTab('session'));
+    $('pairCodeTab').addEventListener('click', () => navigateOrActivate('pair'));
+    $('sessionIdTab').addEventListener('click', () => navigateOrActivate('session'));
     $('token').addEventListener('change', persistTokenPreference);
     $('rememberToken').addEventListener('change', persistTokenPreference);
     $('clearToken').addEventListener('click', () => {

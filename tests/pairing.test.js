@@ -54,7 +54,8 @@ test('dashboard tabs activate the correct protected flow without a second token 
   assert.match(dashboard, /setActiveTab\(tab\)/);
   assert.match(dashboard, /localStorage\.getItem\(TOKEN_STORAGE_KEY\)/);
   assert.match(dashboard, /localStorage\.setItem\(TOKEN_STORAGE_KEY, token\(\)\)/);
-  assert.match(dashboard, /sessionIdTab.*setActiveTab\('session'\)/s);
+  assert.match(dashboard, /sessionIdTab.*navigateOrActivate\('session'\)/s);
+  assert.match(dashboard, /Generate Session ID/);
   assert.match(dashboard, /api\('\/api\/session\/status'/);
   const sessionRoute = server.match(/url\.pathname === '\/api\/session\/status'[\s\S]*?(?=if \(req\.method === 'GET' && url\.pathname === '\/api\/pair\/status')/)?.[0] || '';
   assert.match(sessionRoute, /sessionSent: pairSessionSent/);
@@ -76,6 +77,18 @@ test('dashboard supports explicit public and protected access modes', () => {
   assert.match(dashboard, /document\.body\.classList\.toggle\('access-public', !protectedMode\)/);
   assert.match(dashboard, /\.access-public \.token-field/);
   assert.match(dashboard, /if \(protectedMode && token\(\)\) headers\.Authorization/);
+});
+
+test('dashboard navigation stays local and never starts a Manus workflow or task', () => {
+  assert.match(dashboard, /id="pairCodeTab" class="flow-tab" type="button"/);
+  assert.match(dashboard, /id="sessionIdTab" class="flow-tab" type="button"/);
+  assert.match(dashboard, /function navigateOrActivate\(tab\)/);
+  assert.match(dashboard, /window\.location\.assign\(target\.href\)/);
+  assert.match(dashboard, /history\.replaceState\(null, '', hash\)/);
+  assert.doesNotMatch(dashboard, /window\.open|formaction|task\.create|manus\.ai|Manus workflow/i);
+  assert.match(server, /PAIRING_DASHBOARD_URL/);
+  assert.match(server, /pairingUrl: PAIRING_DASHBOARD_URL/);
+  assert.match(fs.readFileSync(path.join(root, '.env.example'), 'utf8'), /PAIRING_DASHBOARD_URL=/);
 });
 
 test('session sender verifies the target number through the full paired identity', () => {
@@ -100,8 +113,11 @@ test('README documents secret handling and copyable SESSION_ID delivery', () => 
   assert.match(readme, /explicit \*\*public mode\*\*/i);
   assert.match(readme, /anyone who can reach the deployed dashboard can pair/i);
   assert.match(readme, /set a long random token/i);
+  assert.match(readme, /Generate Session ID/);
+  assert.match(readme, /do not create or start a Manus workflow or task/i);
   assert.match(envExample, /Leave empty for explicit public mode/);
   assert.match(envExample, /^PAIRING_DASHBOARD_TOKEN=\s*$/m);
+  assert.match(envExample, /^PAIRING_DASHBOARD_URL=\s*$/m);
 });
 
 test('dashboard creates a legacy BRITECH credentials SESSION_ID', () => {

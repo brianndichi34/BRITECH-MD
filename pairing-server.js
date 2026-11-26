@@ -13,6 +13,18 @@ const { isProtected, isAuthorized } = require('./lib/dashboard-access');
 const PORT = Number(process.env.PORT || process.env.PAIRING_PORT || 3000);
 const HOST = '0.0.0.0';
 const TOKEN = String(process.env.PAIRING_DASHBOARD_TOKEN || '').trim();
+function configuredPairingUrl(value) {
+  try {
+    const url = new URL(String(value || '').trim());
+    if (!['http:', 'https:'].includes(url.protocol)) return '';
+    url.username = '';
+    url.password = '';
+    url.search = '';
+    url.hash = '';
+    return url.toString();
+  } catch { return ''; }
+}
+const PAIRING_DASHBOARD_URL = configuredPairingUrl(process.env.PAIRING_DASHBOARD_URL);
 const SESSION_DIR = path.resolve(process.env.SESSION_DIR || './session/auth');
 const PUBLIC_DIR = path.join(__dirname, 'pairing-web');
 const configuredPairingTimeout = Number(process.env.PAIRING_TIMEOUT_MS);
@@ -175,7 +187,7 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://' + (req.headers.host || 'localhost'));
   if (url.pathname.startsWith('/api/')) {
     if (req.method === 'GET' && url.pathname === '/api/config') {
-      return json(res, 200, { protected: isProtected(TOKEN) });
+      return json(res, 200, { protected: isProtected(TOKEN), pairingUrl: PAIRING_DASHBOARD_URL });
     }
     if (!authorized(req)) return json(res, 401, { error: 'Unauthorized. Enter the private pairing dashboard token.' });
     if (req.method === 'POST' && url.pathname === '/api/pair/start') {
