@@ -4,10 +4,10 @@ const dns = require('node:dns/promises');
 const net = require('node:net');
 const sharp = require('sharp');
 const config = require('../lib/config');
+const { ASSET_DIR, CUSTOM_AVATAR_PATH } = require('../lib/brand-assets');
 
 const MAX_PROFILE_BYTES = 5 * 1024 * 1024;
-const ASSET_DIR = path.join(__dirname, '..', 'assets');
-const MENU_PROFILE_PATH = path.join(ASSET_DIR, 'menu-profile.jpg');
+const MENU_PROFILE_PATH = CUSTOM_AVATAR_PATH;
 function configuredManusKey() { return String(process.env.MANUS_API_KEY || config.manusApiKey || '').trim(); }
 
 function isPrivateAddress(address) {

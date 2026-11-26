@@ -9,6 +9,7 @@ const { sendConnectionWelcome } = require('./lib/connection-welcome');
 const { createBadMacRecovery, isBadMacError } = require('./lib/session-recovery');
 const { loadBaileys } = require('./lib/baileys');
 const { startHealthServer } = require('./lib/health-server');
+const { getBotAvatarPath } = require('./lib/brand-assets');
 
 let stopping = false;
 let reconnectTimer;
@@ -44,10 +45,8 @@ const antiDelete = createAntiDelete();
 
 async function initializeBotProfile(sock) {
   if (profileInitialized || !config.autoSetBotProfile || typeof sock.updateProfilePicture !== 'function') return;
-  const customPath = path.join(__dirname, 'assets', 'menu-profile.jpg');
-  const generatedPath = path.join(__dirname, 'assets', 'britech-md-avatar.png');
-  const profilePath = fs.existsSync(customPath) ? customPath : generatedPath;
-  if (!fs.existsSync(profilePath) || !sock.user?.id) return;
+  const profilePath = getBotAvatarPath();
+  if (!profilePath || !sock.user?.id) return;
   try {
     await sock.updateProfilePicture(sock.user.id, fs.readFileSync(profilePath));
     profileInitialized = true;
