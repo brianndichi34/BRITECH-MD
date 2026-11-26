@@ -27,7 +27,7 @@ const sessionRecovery = createBadMacRecovery({
     error(...args) { logger?.error(...args); }
   },
   onRecovered: async result => {
-    logger.error({ candidate: result.candidate, preserved: result.preserved }, 'Session recovery completed; restarting BRITECH-NB once.');
+    logger.error({ candidate: result.candidate, preserved: result.preserved }, 'Session recovery completed; restarting BRITECH-MD once.');
     setTimeout(() => process.exit(1), 750).unref();
   }
 });
@@ -50,7 +50,7 @@ async function initializeBotProfile(sock) {
   try {
     await sock.updateProfilePicture(sock.user.id, fs.readFileSync(profilePath));
     profileInitialized = true;
-    logger.info('BRITECH-NB profile picture initialized from its saved avatar.');
+    logger.info('BRITECH-MD profile picture initialized from its saved avatar.');
   } catch (error) {
     logger.warn({ err: error?.message || error }, 'Could not initialize the WhatsApp profile picture; .setmenuprofile can retry.');
   }
@@ -155,7 +155,7 @@ async function shutdown() {
   clearTimeout(reconnectTimer);
   try { await activeSocket?.end?.(undefined); } catch {}
   try { await new Promise(resolve => healthServer ? healthServer.close(resolve) : resolve()); } catch {}
-  logger.info('Stopping BRITECH-NB...');
+  logger.info('Stopping BRITECH-MD...');
   setTimeout(() => process.exit(0), 1500).unref();
 }
 process.on('SIGINT', shutdown);

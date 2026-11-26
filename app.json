@@ -1,12 +1,12 @@
 {
-  "name": "BRITECH-NB",
-  "description": "BRITECH-NB WhatsApp multi-device assistant",
+  "name": "BRITECH-MD",
+  "description": "BRITECH-MD WhatsApp multi-device assistant",
   "repository": "https://github.com/brianndichi34/BRITECH-MD",
   "keywords": ["whatsapp", "baileys", "nodejs", "bot"],
   "stack": "heroku-24",
   "formation": { "worker": { "quantity": 1, "size": "basic" } },
   "env": {
-    "BOT_NAME": { "description": "Bot display name", "value": "BRITECH-NB" },
+    "BOT_NAME": { "description": "Bot display name", "value": "BRITECH-MD" },
     "OWNER_NAME": { "description": "Bot owner display name", "value": "BRIAN NDICHI" },
     "OWNER_NUMBER": { "description": "Owner WhatsApp number with country code, digits only", "required": true },
     "PREFIX": { "description": "Command prefix", "value": "." },

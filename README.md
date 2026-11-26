@@ -1,4 +1,4 @@
-# BRITECH-NB — WhatsApp Multi-Device Bot
+# BRITECH-MD — WhatsApp Multi-Device Bot
 
 <p align="center">
   <strong>BRIAN NDICHI · Node.js · Baileys</strong><br>
@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="assets/britech-md-avatar.png" alt="BRITECH-NB — by Brian" width="220">
+  <img src="assets/britech-md-avatar.png" alt="BRITECH-MD — by Brian" width="220">
 </p>
 
 ## Deployment options
@@ -28,7 +28,7 @@
 
 **Important:** WhatsApp requires a long-running process and durable authentication storage. Do not deploy `index.js` as a Vercel Function or a serverless function. Vercel is suitable only for a separate static information page.
 
-For hosts that require an HTTP listener, BRITECH-NB binds the platform-provided `PORT` and serves `GET /healthz` (also available at `/health` and `/`). The endpoint is only a deployment health check; WhatsApp traffic still uses the long-running bot process. The included `Procfile` declares both `web: npm start` and `worker: npm start` so platforms can select the process type they support.
+For hosts that require an HTTP listener, BRITECH-MD binds the platform-provided `PORT` and serves `GET /healthz` (also available at `/health` and `/`). The endpoint is only a deployment health check; WhatsApp traffic still uses the long-running bot process. The included `Procfile` declares both `web: npm start` and `worker: npm start` so platforms can select the process type they support.
 
 ## Keith MD–style pairing experience
 The pairing page is designed to make phone-number pairing easy on mobile: enter the international WhatsApp number, request a code, then view the paired number and pairing code in separate display areas. Use **Copy Pair Code** to copy only the one-time code, paste it into WhatsApp → Linked devices → Link with phone number instead, and approve the request. Never share the one-time code.
@@ -37,11 +37,11 @@ The dashboard has two explicit flows: **Pair Code** and **Generate Session ID**.
 
 After dashboard pairing is confirmed, the dashboard sends at most two `SESSION_ID` messages to the WhatsApp DM for the entered phone number: one Word document and one complete plain-text message. It never sends a notice message or splits the ID into chunks. It verifies that number against the connected account’s phone JID or verified PN alias, including accounts whose primary identity is a LID. It rejects groups, broadcasts, and identities that cannot be tied to the entered number. The GitHub Actions workflow uses the same phone-number routing. Delivery is reported only when Baileys emits a WhatsApp server acknowledgement; a locally-created message ID is not treated as proof. Duplicate `connection: open` events and repeated delivery calls are blocked for the same pairing socket. New `BRITECH3:` IDs use Brotli compression over the auth files directly; older `BRITECH2:` IDs remain supported. Open the Word file or copy the plain-text value. Treat it as a password; do not post it in issues, logs, screenshots, or chat. Configure the dashboard with `PAIRING_DASHBOARD_TOKEN` and `SESSION_DIR` before exposing it.
 
-The command system also loads local modules from `plugins/`. The `.menu` command now opens with a generated BRITECH-NB avatar and a redesigned, phone-readable layout using consistent color-coded emoji accents, bold section titles, compact command rows, and clear separators. `.settings` and `.doctor` use the same visual style. On first connection, the generated avatar is applied to the bot's WhatsApp profile by default; owners can use `.setmenuprofile https://...` with a direct public HTTPS image URL to update both the WhatsApp account photo and the image used by the menu. Set `AUTO_SET_BOT_PROFILE=false` to stop automatic profile updates. Image downloads are size-limited and local/private URLs are rejected. After pairing succeeds, the configured `WELCOME_MESSAGE` is automatically sent to the newly linked account's own WhatsApp chat before the pairing socket closes; the normal bot startup path retries it if the first send fails. A persistent per-account marker prevents repeats on reconnect, and the same message remains the group-join welcome text. Other local features include stickers, QR images, native polls/reactions, AFK notices, group name/description changes, mute/unmute, and invite-link renewal.
+The command system also loads local modules from `plugins/`. The `.menu` command now opens with a generated BRITECH-MD avatar and a redesigned, phone-readable layout using consistent color-coded emoji accents, bold section titles, compact command rows, and clear separators. `.settings` and `.doctor` use the same visual style. On first connection, the generated avatar is applied to the bot's WhatsApp profile by default; owners can use `.setmenuprofile https://...` with a direct public HTTPS image URL to update both the WhatsApp account photo and the image used by the menu. Set `AUTO_SET_BOT_PROFILE=false` to stop automatic profile updates. Image downloads are size-limited and local/private URLs are rejected. After pairing succeeds, the configured `WELCOME_MESSAGE` is automatically sent to the newly linked account's own WhatsApp chat before the pairing socket closes; the normal bot startup path retries it if the first send fails. A persistent per-account marker prevents repeats on reconnect, and the same message remains the group-join welcome text. Other local features include stickers, QR images, native polls/reactions, AFK notices, group name/description changes, mute/unmute, and invite-link renewal.
 
 Incoming WhatsApp statuses are automatically marked viewed and reacted to by default. Status messages are handled on both `notify` and `append` Baileys upserts, while normal chat commands are restricted to live `notify` events plus the linked account's own sent commands (`append` with `fromMe`). Status actions and chat commands in one event batch run concurrently so a slow status receipt does not delay command handling. Successful views are deduplicated; failed view/read attempts are logged and can retry on a later event. The bot uses the linked WhatsApp account, so the status owner can see its view and reaction. Each new status gets a cryptographically random reaction from the configured default pool `💕, 💞, 💖, 💯, 🥰`; retries for the same status reuse that selection and duplicate events do not send duplicate reactions. Commands are acknowledged with a random emoji from the same default pool when `AUTO_REACT_COMMANDS=true`. Set `AUTO_VIEW_STATUS=false` or `AUTO_LIKE_STATUS=false` in `.env` to turn viewing or reacting off independently. Set `STATUS_LIKE_EMOJIS` or `COMMAND_REACTION_EMOJIS` to comma-separated lists to customize the choices, or use the legacy `STATUS_LIKE_EMOJI` for one fixed status emoji. Normal chat read receipts remain controlled separately by `AUTO_READ`.
 
-Anti-delete is enabled by default for ordinary messages only. When Baileys receives a message-revocation event, BRITECH-NB forwards the cached original message from a group or private chat directly into the linked account's own WhatsApp DM (self-chat), with the source chat and sender noted. Revoked status updates are explicitly ignored and never sent to the anti-delete DM. It falls back to `OWNER_NUMBER` only if the linked account identity is unavailable. It keeps up to 1,000 messages in memory for 48 hours; only messages received while the bot is online can be recovered, and the cache clears on restart. Set `AUTO_ANTI_DELETE=false` to disable this feature.
+Anti-delete is enabled by default for ordinary messages only. When Baileys receives a message-revocation event, BRITECH-MD forwards the cached original message from a group or private chat directly into the linked account's own WhatsApp DM (self-chat), with the source chat and sender noted. Revoked status updates are explicitly ignored and never sent to the anti-delete DM. It falls back to `OWNER_NUMBER` only if the linked account identity is unavailable. It keeps up to 1,000 messages in memory for 48 hours; only messages received while the bot is online can be recovered, and the cache clears on restart. Set `AUTO_ANTI_DELETE=false` to disable this feature.
 
 Maintenance commands include `.uptime`, `.runtime`, and `.jid` for diagnostics. The owner can run `.update check` to inspect npm updates and `.update deps` (or `.update`) to install dependency versions permitted by `package.json`; restart the process from the host panel afterward. This updates npm dependencies only, not bot source code, and it never edits or clears WhatsApp session files. BRITECH does not silently execute remote plugin scripts; only use trusted, reviewed updates.
 
@@ -63,7 +63,7 @@ The automated test suite checks the pairing display/copy controls, BRITECH sessi
 
 1. Open the repository **Settings → Secrets and variables → Actions**.
 2. Add a repository secret named `SESSION_ARCHIVE_PASSWORD`. Use a long, unique password and keep it private.
-3. Open the **Actions** tab → **BRITECH-NB — Generate WhatsApp Session** → **Run workflow**.
+3. Open the **Actions** tab → **BRITECH-MD — Generate WhatsApp Session** → **Run workflow**.
 4. Enter your WhatsApp number with country code and digits only, e.g. `2547XXXXXXXX`.
 5. Start the workflow. Open its run log and use the displayed one-time pairing code in WhatsApp → Linked devices → Link with phone number instead.
 6. Approve the pairing and wait for the workflow to finish. The workflow sends at most one complete `SESSION_ID` Word document and one complete plain-text message to the entered number’s WhatsApp DM; it never sends chunked copies.
@@ -107,7 +107,7 @@ The Silva Host public share card is controlled by Silva Host itself and may cont
 4. The ZIP now includes a safe `.env` starter beside `package.json`. Open it in KataBump **Files**; if it is missing, select **New File**, name it `.env`, and copy the template from `.env.example`. Set your complete `BRITECH3:` value after `SESSION_ID=` on one line, without spaces around `=`. The starter enables `AUTO_VIEW_STATUS=true`, `AUTO_LIKE_STATUS=true`, and `AUTO_ANTI_DELETE=true`.
 5. Press **Save** in the file editor (or confirm the save prompt), then reopen `.env` to confirm it saved and the line begins `SESSION_ID=BRITECH3:`. The committed `.env` is only a public starter: its `SESSION_ID`, API key, and dashboard token are blank. Never commit or upload a populated `.env`, session ID, auth folder, or real token to GitHub; fill private values only in the KataBump copy. Keep the session ID on one line with no quotes or spaces around `=`.
 6. Ensure `/home/container/session/auth` is persistent. If that folder already contains credentials, back it up and clear it before first startup with `SESSION_ID`; the bot will not overwrite an existing auth session when importing the ID.
-7. Restart the server from the KataBump console. On startup, the bot imports the archive into `session/auth`; confirm logs show `Loaded SESSION_ID into auth folder` followed by `BRITECH-NB connected`.
+7. Restart the server from the KataBump console. On startup, the bot imports the archive into `session/auth`; confirm logs show `Loaded SESSION_ID into auth folder` followed by `BRITECH-MD connected`.
 8. Keep at least one validated backup beside the active `session/auth` directory, such as `auth.backup-<date>` or `auth.before-restore-<date>`. After three repeated Baileys `Bad MAC` or session-cipher decryption errors, the bot preserves the failing auth folder, rotates in the newest validated unused backup, and restarts. If no validated backup exists, `.autofix` reports that a fresh `BRITECH3:` session is required; it never overwrites credentials or secrets automatically.
 
 KataBump's web upload process requires a ZIP containing `package.json` and the entry file; its console can also clone a Git repository. KataBump documents `.env` placement at the project root and uploading via its web manager or SFTP. See [environment-variable instructions](https://docs.katabump.com/launch-your-bot/environment-variables/), [upload instructions](https://docs.katabump.com/launch-your-bot/upload-via-web/), and [FAQ](https://docs.katabump.com/faq/).
@@ -122,7 +122,7 @@ KataBump's web upload process requires a ZIP containing `package.json` and the e
 
 | Variable | Required | Default / purpose |
 |---|---|---|
-| `BOT_NAME` | No | `BRITECH-NB` |
+| `BOT_NAME` | No | `BRITECH-MD` |
 | `OWNER_NAME` | No | `BRIAN NDICHI` |
 | `OWNER_NUMBER` | Recommended | Owner number in international digits |
 | `OWNER_EMAIL` | No | Contact shown by owner command |

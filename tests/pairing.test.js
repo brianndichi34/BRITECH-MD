@@ -234,7 +234,7 @@ test('Word document contains the complete SESSION_ID and delivery sends at most 
   const document = await pairingSession.createSessionDocx(sessionId);
   const docx = await JSZip.loadAsync(document);
   const documentXml = await docx.file('word/document.xml').async('string');
-  assert.match(documentXml, /BRITECH-NB SESSION_ID/);
+  assert.match(documentXml, /BRITECH-MD SESSION_ID/);
   assert.match(documentXml, /BRITECH2:abc\+\/=XYZ/);
 
   const sent = [];

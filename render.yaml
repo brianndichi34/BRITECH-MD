@@ -11,7 +11,7 @@ services:
       sizeGB: 1
     envVars:
       - key: BOT_NAME
-        value: BRITECH-NB
+        value: BRITECH-MD
       - key: OWNER_NAME
         value: BRIAN NDICHI
       - key: OWNER_NUMBER

@@ -1,4 +1,4 @@
-name: BRITECH-NB — Generate WhatsApp Session
+name: BRITECH-MD — Generate WhatsApp Session
 on:
   workflow_dispatch:
     inputs:
@@ -48,7 +48,7 @@ jobs:
           openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -in SESSION_ID.txt -out SESSION_ID.txt.enc -pass env:SESSION_ARCHIVE_PASSWORD
           openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -in session-auth.zip -out session-auth.zip.enc -pass env:SESSION_ARCHIVE_PASSWORD
           {
-            echo "## BRITECH-NB session generated"
+            echo "## BRITECH-MD session generated"
             echo ""
             echo "- WhatsApp registration was verified from the saved credentials."
             echo "- Encrypted SESSION_ID and auth-folder backup are uploaded as short-lived artifacts."

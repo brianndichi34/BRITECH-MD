@@ -54,7 +54,7 @@ async function inspectHealth(ctx) {
   return { checks, issues, sessionDir };
 }
 
-function formatHealth(result, title = 'BRITECH-NB · BOT HEALTH') {
+function formatHealth(result, title = 'BRITECH-MD · BOT HEALTH') {
   const lines = [`╭━━━🩺 *${title}* ━━━╮`];
   for (const check of result.checks) lines.push(`${check.ok ? '🟢' : '🟠'} *${check.name}:* ${check.detail}`);
   lines.push('╰━━━━━━━━━━━━━━━━━━━━━━╯');
@@ -78,7 +78,7 @@ async function sendDoctorPanel(sock, chat, text) {
       message: {
         messageContextInfo: { deviceListMetadata: {}, deviceListMetadataVersion: 2 },
         interactiveMessage: {
-          header: proto.Message.InteractiveMessage.Header.create({ title: 'BRITECH-NB · BOT DOCTOR', hasMediaAttachment: false }),
+          header: proto.Message.InteractiveMessage.Header.create({ title: 'BRITECH-MD · BOT DOCTOR', hasMediaAttachment: false }),
           body: proto.Message.InteractiveMessage.Body.create({ text }),
           footer: proto.Message.InteractiveMessage.Footer.create({ text: 'Select a safe action' }),
           nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.create({ buttons: [
