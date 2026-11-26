@@ -315,12 +315,12 @@ test('pairing-code retries discard partial auth state before a fresh attempt', (
 test('web pairing keeps same-number and different-number sessions concurrently', () => {
   assert.match(server, /cancelActivePairAttempt/);
   assert.match(server, /await current\.end\(undefined\)/);
-  assert.match(server, /pairing-\$\{Date\.now\(\)\}-\$\{number\}/);
+  assert.match(server, /pairing-\$\{Date\.now\(\)\}-\$\{crypto\.randomBytes\(4\)\.toString\('hex'\)\}-\$\{number\}/);
   assert.match(server, /const botProcesses = new Map\(\)/);
   assert.match(server, /registeredSessionDirs/);
   assert.match(server, /SESSION_DIR: resolved, PORT: ''/);
   assert.doesNotMatch(server, /This service already has a registered WhatsApp session/);
-  assert.match(server, /const sessionDir = path\.join\(SESSION_DIR, `pairing-\$\{Date\.now\(\)\}-\$\{number\}`\)/);
+  assert.match(server, /const sessionDir = path\.join\(SESSION_DIR, `pairing-\$\{Date\.now\(\)\}-\$\{crypto\.randomBytes\(4\)\.toString\('hex'\)\}-\$\{number\}`\)/);
   assert.match(server, /useMultiFileAuthState\(sessionDir\)/);
   assert.match(server, /createAuthArchiveSessionId\(sessionDir\)/);
   assert.match(server, /stateDir: sessionDir/);
@@ -334,7 +334,8 @@ test('pairing-code requests wait for Baileys initial QR handshake', () => {
   const generator = fs.readFileSync(path.join(root, 'generate-session.js'), 'utf8');
   assert.match(generator, /const \{ connection, qr, lastDisconnect \} = update/);
   assert.match(generator, /if \(qr && !state\.creds\.registered\)/);
-  assert.match(generator, /browser: Browsers\.macOS\('Chrome'\)/);
+  assert.match(generator, /browser: Browsers\.macOS\('Google Chrome'\)/);
+  assert.match(server, /browser: Browsers\.macOS\('Google Chrome'\)/);
   assert.doesNotMatch(generator, /Browsers\.macOS\('Desktop'\)/);
   assert.doesNotMatch(generator, /printQRInTerminal/);
   assert.match(server, /const \{ connection, qr \} = update/);

@@ -2,6 +2,7 @@ require('dotenv').config();
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { spawn } = require('child_process');
 const pino = require('pino');
 const config = require('./lib/config');
@@ -108,7 +109,7 @@ async function startPairing(phone) {
   const number = normalizePhone(phone);
   if (number.length < 10 || number.length > 15) throw new Error('Enter a valid international number with country code, digits only.');
   secureSessionDirectory(SESSION_DIR);
-  const sessionDir = path.join(SESSION_DIR, `pairing-${Date.now()}-${number}`);
+  const sessionDir = path.join(SESSION_DIR, `pairing-${Date.now()}-${crypto.randomBytes(4).toString('hex')}-${number}`);
   pairingSessionDir = sessionDir;
   secureSessionDirectory(sessionDir);
   pairStatus = 'connecting'; pairingCode = ''; pairingPhone = number; pairError = ''; pairTextSent = false; pairDocumentSent = false; pairSessionSent = false; pairWelcomeSent = false;
@@ -122,7 +123,8 @@ async function startPairing(phone) {
   const sock = makeWASocket({
     ...(version ? { version } : {}),
     auth: state, logger: pino({ level: 'silent' }), printQRInTerminal: false,
-    browser: Browsers.ubuntu('Chrome'), markOnlineOnConnect: false, syncFullHistory: false
+    // Use the canonical browser identity accepted by WhatsApp's companion-link flow.
+    browser: Browsers.macOS('Google Chrome'), markOnlineOnConnect: false, syncFullHistory: false
   });
   pairSocket = sock;
   let deliveryStarted = false;
