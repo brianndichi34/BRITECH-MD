@@ -43,9 +43,10 @@ let pairDocumentSent = false;
 let pairSessionSent = false;
 let pairWelcomeSent = false;
 let pairExpiresAt = 0;
-let botProcess = null;
-let startLock = false;
+const botProcesses = new Map();
+const botStartLocks = new Set();
 let pairAttemptTimer = null;
+let pairingSessionDir = '';
 
 function json(res, status, data) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
@@ -62,44 +63,32 @@ function readBody(req) {
     req.on('error', reject);
   });
 }
-async function launchBot() {
-  if (botProcess || startLock) return;
-  startLock = true;
+function registeredSessionDirs() {
+  if (!fs.existsSync(SESSION_DIR)) return [];
+  const dirs = [];
+  const candidates = [SESSION_DIR, ...fs.readdirSync(SESSION_DIR, { withFileTypes: true })
+    .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
+    .map(entry => path.join(SESSION_DIR, entry.name))];
+  for (const dir of candidates) {
+    try {
+      const creds = JSON.parse(fs.readFileSync(path.join(dir, 'creds.json'), 'utf8'));
+      if (creds.registered) dirs.push(path.resolve(dir));
+    } catch {}
+  }
+  return dirs;
+}
+async function launchBot(sessionDir) {
+  const resolved = path.resolve(sessionDir);
+  if (botProcesses.has(resolved) || botStartLocks.has(resolved)) return;
+  botStartLocks.add(resolved);
   try {
-    if (!fs.existsSync(path.join(SESSION_DIR, 'creds.json'))) throw new Error('Registered credentials not found.');
-    botProcess = spawn(process.execPath, ['index.js'], { cwd: __dirname, env: process.env, stdio: 'inherit' });
-    botProcess.on('exit', (code) => { log.warn({ code }, 'Bot process stopped'); botProcess = null; });
-    log.info('BRITECH-MD bot process started after pairing.');
-  } finally { startLock = false; }
-}
-async function stopBotForRePair() {
-  const current = botProcess;
-  if (!current) return;
-  await new Promise(resolve => {
-    let settled = false;
-    const finish = () => {
-      if (settled) return;
-      settled = true;
-      resolve();
-    };
-    current.once('exit', finish);
-    try { current.kill('SIGTERM'); } catch { finish(); }
-    setTimeout(() => {
-      if (settled) return;
-      try { current.kill('SIGKILL'); } catch {}
-      finish();
-    }, 5000).unref();
-  });
-  if (botProcess === current) botProcess = null;
-}
-function rotateRegisteredSession() {
-  if (!fs.existsSync(SESSION_DIR)) return '';
-  const stat = fs.lstatSync(SESSION_DIR);
-  if (stat.isSymbolicLink()) throw new Error('The session directory must not be a symbolic link.');
-  const backupDir = `${SESSION_DIR}.backup-${Date.now()}`;
-  fs.renameSync(SESSION_DIR, backupDir);
-  secureSessionDirectory(backupDir);
-  return backupDir;
+    if (!fs.existsSync(path.join(resolved, 'creds.json'))) throw new Error('Registered credentials not found.');
+    const childEnv = { ...process.env, SESSION_DIR: resolved, PORT: '' };
+    const child = spawn(process.execPath, ['index.js'], { cwd: __dirname, env: childEnv, stdio: 'inherit' });
+    botProcesses.set(resolved, child);
+    child.on('exit', (code) => { log.warn({ code, sessionDir: path.basename(resolved) }, 'Bot process stopped'); botProcesses.delete(resolved); });
+    log.info({ sessionDir: path.basename(resolved) }, 'BRITECH-MD bot process started.');
+  } finally { botStartLocks.delete(resolved); }
 }
 async function cancelActivePairAttempt() {
   const current = pairSocket;
@@ -108,36 +97,24 @@ async function cancelActivePairAttempt() {
   clearTimeout(pairAttemptTimer);
   pairAttemptTimer = null;
   try { await current.end(undefined); } catch {}
-  if (!fs.existsSync(path.join(SESSION_DIR, 'creds.json'))) {
-    fs.rmSync(SESSION_DIR, { recursive: true, force: true });
+  if (pairingSessionDir && !fs.existsSync(path.join(pairingSessionDir, 'creds.json'))) {
+    fs.rmSync(pairingSessionDir, { recursive: true, force: true });
   }
+  pairingSessionDir = '';
 }
 async function startPairing(phone) {
   await cancelActivePairAttempt();
   const { default: makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion, Browsers, DisconnectReason } = await loadBaileys();
   const number = normalizePhone(phone);
   if (number.length < 10 || number.length > 15) throw new Error('Enter a valid international number with country code, digits only.');
-  const credsPath = path.join(SESSION_DIR, 'creds.json');
   secureSessionDirectory(SESSION_DIR);
-  if (fs.existsSync(credsPath)) {
-    let existing;
-    try { existing = JSON.parse(fs.readFileSync(credsPath, 'utf8')); } catch {}
-    if (existing?.registered) {
-      await stopBotForRePair();
-      const backupDir = rotateRegisteredSession();
-      log.info({ backup: path.basename(backupDir) }, 'Rotated the previous WhatsApp session for a new pairing attempt.');
-    } else {
-      // A rejected/expired attempt can leave an unregistered creds.json and stale
-      // pre-keys behind. They must not be reused for the next phone-number link.
-      fs.rmSync(SESSION_DIR, { recursive: true, force: true });
-    }
-    secureSessionDirectory(SESSION_DIR);
-  }
+  pairingSessionDir = path.join(SESSION_DIR, `pairing-${Date.now()}-${number}`);
+  secureSessionDirectory(pairingSessionDir);
   pairStatus = 'connecting'; pairingCode = ''; pairingPhone = number; pairError = ''; pairTextSent = false; pairDocumentSent = false; pairSessionSent = false; pairWelcomeSent = false;
-  const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
+  const { state, saveCreds } = await useMultiFileAuthState(pairingSessionDir);
   const savePrivateCreds = async () => {
     await saveCreds();
-    secureSessionDirectory(SESSION_DIR);
+    secureSessionDirectory(pairingSessionDir);
   };
   let version;
   try { ({ version } = await fetchLatestBaileysVersion()); } catch {}
@@ -159,7 +136,7 @@ async function startPairing(phone) {
     pairAttemptTimer = null;
     pairExpiresAt = 0;
     try { await sock.end(undefined); } catch {}
-    if (!state.creds.registered) fs.rmSync(SESSION_DIR, { recursive: true, force: true });
+    if (!state.creds.registered) fs.rmSync(pairingSessionDir, { recursive: true, force: true });
   }, PAIRING_TIMEOUT_MS);
   sock.ev.on('creds.update', savePrivateCreds);
   sock.ev.on('connection.update', async update => {
@@ -207,13 +184,13 @@ async function startPairing(phone) {
         if (pairSocket !== sock) return;
         try {
           const recipient = getVerifiedRecipient(number, state.creds.me);
-          const sessionId = await createAuthArchiveSessionId(SESSION_DIR);
+          const sessionId = await createAuthArchiveSessionId(pairingSessionDir);
           const delivery = await deliverSession(sock, recipient, sessionId);
           pairSessionSent = delivery.sessionSent;
           pairTextSent = delivery.textSent;
           pairDocumentSent = delivery.documentSent;
           const welcome = await sendConnectionWelcome(sock, config.welcomeMessage, {
-            stateDir: path.dirname(SESSION_DIR),
+            stateDir: pairingSessionDir,
             logger: log
           });
           pairWelcomeSent = welcome.sent;
@@ -228,7 +205,7 @@ async function startPairing(phone) {
           try { await sock.end(undefined); } catch {}
           pairSocket = null;
         }
-        await launchBot().catch(error => log.error(error, 'Could not start bot after pairing'));
+        await launchBot(pairingSessionDir).catch(error => log.error(error, 'Could not start bot after pairing'));
       }, 1200);
     }
     if (update.connection === 'close' && pairStatus !== 'linked') {
@@ -237,7 +214,7 @@ async function startPairing(phone) {
       const status = update.lastDisconnect?.error?.output?.statusCode;
       pairError = status === DisconnectReason.loggedOut ? 'WhatsApp rejected the session. Remove old linked devices and try again.' : 'WhatsApp connection closed. Start a fresh pairing attempt.';
       pairStatus = 'error'; pairingCode = ''; pairSocket = null; pairExpiresAt = 0;
-      if (!state.creds.registered) fs.rmSync(SESSION_DIR, { recursive: true, force: true });
+      if (!state.creds.registered) fs.rmSync(pairingSessionDir, { recursive: true, force: true });
     }
   });
 }
@@ -280,7 +257,6 @@ const server = http.createServer(async (req, res) => {
 });
 server.listen(PORT, HOST, async () => {
   log.info({ port: PORT }, 'BRITECH-MD pairing dashboard is online.');
-  const creds = path.join(SESSION_DIR, 'creds.json');
   try {
     const imported = await hydrateSessionId(process.env.SESSION_ID, SESSION_DIR);
     if (imported.loaded) log.info({ files: imported.files, format: imported.format }, 'Loaded SESSION_ID into auth folder.');
@@ -290,11 +266,14 @@ server.listen(PORT, HOST, async () => {
     // Operators can pair a fresh account from the dashboard after clearing the bad value.
     log.warn({ message: error.message }, 'SESSION_ID import skipped; pairing dashboard remains available.');
   }
-  if (fs.existsSync(creds)) {
-    try {
-      if (JSON.parse(fs.readFileSync(creds, 'utf8')).registered) await launchBot();
-    } catch (error) { log.error(error, 'Existing session could not be started'); }
+  for (const sessionDir of registeredSessionDirs()) {
+    await launchBot(sessionDir).catch(error => log.error({ err: error, sessionDir: path.basename(sessionDir) }, 'Existing session could not be started'));
   }
 });
-process.on('SIGTERM', () => { try { pairSocket?.end(undefined); botProcess?.kill('SIGTERM'); } catch {} server.close(); });
-process.on('SIGINT', () => { try { pairSocket?.end(undefined); botProcess?.kill('SIGINT'); } catch {} server.close(); });
+function stopAllBots(signal) {
+  for (const child of botProcesses.values()) {
+    try { child.kill(signal); } catch {}
+  }
+}
+process.on('SIGTERM', () => { try { pairSocket?.end(undefined); stopAllBots('SIGTERM'); } catch {} server.close(); });
+process.on('SIGINT', () => { try { pairSocket?.end(undefined); stopAllBots('SIGINT'); } catch {} server.close(); });

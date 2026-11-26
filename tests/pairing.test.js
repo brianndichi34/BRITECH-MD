@@ -144,7 +144,7 @@ test('dashboard only sends to the account whose PN alias matches the entered num
   assert.equal(pairingSession.getVerifiedRecipient('254712345678', { id: '254712345678:4@s.whatsapp.net' }), '254712345678@s.whatsapp.net');
   assert.throws(() => pairingSession.getVerifiedRecipient('254712345678', { id: '254700000000:4@s.whatsapp.net' }), /cannot be verified.*No session was sent/);
   assert.throws(() => pairingSession.getVerifiedRecipient('254712345678', { id: '123456789012345@lid' }), /cannot be verified.*No session was sent/);
-  assert.match(server, /createAuthArchiveSessionId\(SESSION_DIR\)/);
+  assert.match(server, /createAuthArchiveSessionId\(pairingSessionDir\)/);
 });
 
 test('JID resolver normalizes phone, legacy c.us, hosted and mapped LID identities', () => {
@@ -310,14 +310,16 @@ test('pairing-code retries discard partial auth state before a fresh attempt', (
   assert.match(generator, /fs\.rmSync\(sessionDir, \{ recursive: true, force: true \}\)/);
 });
 
-test('web pairing allows another number by rotating the prior registered session privately', () => {
+test('web pairing keeps same-number and different-number sessions concurrently', () => {
   assert.match(server, /cancelActivePairAttempt/);
   assert.match(server, /await current\.end\(undefined\)/);
-  assert.match(server, /stopBotForRePair/);
-  assert.match(server, /rotateRegisteredSession/);
-  assert.match(server, /\.backup-\$\{Date\.now\(\)\}/);
-  assert.match(server, /Rotated the previous WhatsApp session for a new pairing attempt/);
+  assert.match(server, /pairing-\$\{Date\.now\(\)\}-\$\{number\}/);
+  assert.match(server, /const botProcesses = new Map\(\)/);
+  assert.match(server, /registeredSessionDirs/);
+  assert.match(server, /SESSION_DIR: resolved, PORT: ''/);
+  assert.match(server, /launchBot\(pairingSessionDir\)/);
   assert.doesNotMatch(server, /This service already has a registered WhatsApp session/);
+  assert.match(fs.readFileSync(path.join(root, 'index.js'), 'utf8'), /stateDir: config\.sessionDir/);
 });
 
 test('pairing-code requests wait for Baileys initial QR handshake', () => {

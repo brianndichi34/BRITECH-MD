@@ -120,7 +120,7 @@ async function startBot() {
         clearTimeout(reconnectTimer);
         reconnectTimer = undefined;
         logger.info(`✅ ${config.botName} connected as ${sock.user?.id}`);
-        try { await sendConnectionWelcome(sock, config.welcomeMessage, { logger }); }
+        try { await sendConnectionWelcome(sock, config.welcomeMessage, { stateDir: config.sessionDir, logger }); }
         catch (error) { logger.error({ err: error?.message || error }, 'Could not persist the one-time connection welcome marker.'); }
         await initializeBotProfile(sock);
       }
